@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Biodanza Messplayer 5</title>
+<title>Biodanza Messplayer 6</title>
 <style>
   body { font-family: system-ui, sans-serif; max-width: 680px; margin: 1.5rem auto; padding: 0 1rem; color: #222; background: #fafaf7; line-height: 1.5; }
   h1 { font-size: 1.4rem; font-weight: 500; margin-bottom: 0.2rem; }
@@ -47,7 +47,7 @@
 </style>
 </head>
 <body>
-<h1>Biodanza Messplayer 5</h1>
+<h1>Biodanza Messplayer 6</h1>
 <div class="hint">Herz, Atmung, Bewegung, Klangumgebung und Musik mit derselben Uhr. Gurt, Mikrofon und Musik laufen unabhängig voneinander.</div>
 
 <div id="bar"><span id="wl">Bildschirm: nicht nötig</span> · <span id="dur">keine Aufzeichnung</span> · <span id="mem">Speicher …</span></div>
@@ -134,8 +134,9 @@
 
 <fieldset>
   <legend>Raumtemperatur (ThermoPro TP357)</legend>
-  <div class="hint">Am Ende der Messung abholen. Das Thermometer speichert einen Wert pro Minute für die letzten 24 Stunden. Nach dem ersten Abholen geschieht es beim Beenden der Gurtaufzeichnung von selbst.</div>
-  <button class="main" id="tpget">Temperatur abholen</button>
+  <div class="hint">Zu Beginn einmal auf „Thermometer verbinden“ tippen und das Gerät wählen. Danach liest der Player die aktuelle Temperatur und Luftfeuchte im gewählten Abstand selbst ab, solange etwas aufgezeichnet wird, und noch einmal beim Beenden der Gurtaufzeichnung. Nach einem Neuladen der Seite einmal neu verbinden.</div>
+  <label>Abruf alle: <select id="tpint"><option value="1">1 Minute</option><option value="2">2 Minuten</option><option value="5" selected>5 Minuten</option><option value="10">10 Minuten</option></select></label>
+  <button class="main" id="tpget">Thermometer verbinden</button>
   <div id="tpstatus" class="stat"></div>
 </fieldset>
 
@@ -1239,64 +1240,55 @@ async function tpConnect() {
   }
   throw last;
 }
+let tpLastTry = 0, tpLogged = false;
 async function tpFetch() {
   if (tpBusy || !tpDev) return;
-  tpBusy = true; $("tpget").disabled = true;
-  addEntry({ typ: "Temperatur", name: "Abruf begonnen: " + (tpDev.name || "Thermometer"), start: Date.now() }); flush();
-  let rd = null, h = null; const types = {}, firsts = []; let nPack = 0, nInvalid = 0, nShort = 0;
-  const report = (extra) => {
-    const t = Object.keys(types).map(k => `${k}: ${types[k]}`).join(", ") || "keine";
-    addEntry({ typ: "Temperatur", name: `Rohdaten: ${nPack} Pakete (${t}), ${nInvalid} Platzhalter, ${nShort} zu kurz${extra ? ", " + extra : ""}. Erste Pakete: ${firsts.join(" | ") || "keine"}`, start: Date.now() });
-  };
+  tpBusy = true; $("tpget").disabled = true; tpLastTry = Date.now();
+  let rd = null, h = null, first = "";
   try {
     const svc = await tpConnect();
     rd = await svc.getCharacteristic(TP_READ);
-    const wr = await svc.getCharacteristic(TP_WRITE), vals = [];
-    tpStatus("Lese den Verlauf …");
-    const t0 = Math.round(Date.now() / 60000) * 60000 - 1439 * 60000;
-    await new Promise((res, rej) => {
-      const to = setTimeout(() => rej(new Error("keine Antwort vom Thermometer")), 45000);
-      let late = null;
-      const done = () => { clearTimeout(to); clearTimeout(late); res(); };
+    const wr = await svc.getCharacteristic(TP_WRITE);
+    tpStatus("Lese den aktuellen Wert …");
+    /* TP357S: Das Paket C2 enthält ab Byte 3 die Temperatur in Zehntelgrad (Int16, little endian) und in Byte 5 die Luftfeuchte */
+    const val = await new Promise((res, rej) => {
+      const to = setTimeout(() => rej(new Error("keine Antwort vom Thermometer")), 12000);
       h = e => {
-        const v = e.target.value, c = v.getUint8(0), key = c.toString(16).toUpperCase().padStart(2, "0");
-        nPack++; types[key] = (types[key] || 0) + 1;
-        if (firsts.length < 4) firsts.push(hexOf(v));
-        if (c === 0xC2) { if (vals.length) done(); else { clearTimeout(late); late = setTimeout(done, 8000); } return; }
-        if (c !== 0xA7) return;
-        if (v.byteLength < 19) { nShort++; return; }
-        const raw = v.getInt16(1, true);
-        for (let i = 0; i < 5; i++) {
-          const o = 4 + 3 * i, t10 = v.getInt16(o, true), rh = v.getUint8(o + 2);
-          if (t10 > 1024 || rh > 100) { nInvalid++; continue; }
-          vals.push({ t: t0 + (5 * (raw - 1) + i) * 60000, c: t10 / 10, h: rh });
-        }
+        const v = e.target.value;
+        if (!first) first = hexOf(v);
+        if (v.getUint8(0) !== 0xC2 || v.byteLength < 6) return;
+        const c = v.getInt16(3, true) / 10, rh = v.getUint8(5);
+        if (c < -40 || c > 70 || rh > 100) return;
+        clearTimeout(to); res({ c, h: rh });
       };
       rd.addEventListener("characteristicvaluechanged", h);
       rd.startNotifications().then(() => wr.writeValueWithoutResponse(new Uint8Array([0xA7, 0, 0, 0, 0, 0x7A]))).catch(e => { clearTimeout(to); rej(e); });
     });
-    report();
-    vals.forEach(r => put("temp", r));
-    if (!vals.length) throw new Error("das Thermometer lieferte keine Werte");
-    const last = vals.reduce((a, b) => (b.t > a.t ? b : a));
-    addEntry({ typ: "Temperatur", name: `Verlauf abgeholt, ${vals.length} Werte, zuletzt ${num(last.c)} °C und ${last.h} % Luftfeuchte`, start: Date.now() });
-    tpStatus(`Abgeholt: ${vals.length} Minutenwerte, zuletzt ${num(last.c)} °C und ${last.h} % Luftfeuchte.`);
+    put("temp", { t: Date.now(), c: val.c, h: val.h });
+    if (!tpLogged) { tpLogged = true; addEntry({ typ: "Temperatur", name: `Erster Wert: ${num(val.c)} °C und ${val.h} % Luftfeuchte. Rohdaten: ${first}`, start: Date.now() }); }
+    tpStatus(`Zuletzt ${stamp(new Date()).slice(0, 8)}: ${num(val.c)} °C, ${val.h} % Luftfeuchte. Nächster Abruf in ${$("tpint").value} min.`);
     await flush();
   } catch (e) {
-    if (!nPack && !String(e && e.message).includes("lieferte")) report("Fehler");
-    tpStatus("Abholen nicht möglich: " + (e && e.message ? e.message : e) + `. Empfangen: ${nPack} Pakete. ThermoPro-App schließen, Thermometer in die Nähe legen und nochmal tippen.`);
-    addEntry({ typ: "Temperatur", name: "Abholen fehlgeschlagen: " + (e && e.message ? e.message : e), start: Date.now() });
+    tpStatus("Abruf nicht möglich: " + (e && e.message ? e.message : e) + ". Nächster Versuch im gewählten Abstand.");
+    addEntry({ typ: "Temperatur", name: "Abruf fehlgeschlagen: " + (e && e.message ? e.message : e) + (first ? ". Rohdaten: " + first : ""), start: Date.now() });
     flush();
   }
   try { if (rd && h) rd.removeEventListener("characteristicvaluechanged", h); } catch (e) {}
   try { tpDev.gatt.disconnect(); } catch (e) {}
   tpBusy = false; $("tpget").disabled = false;
 }
+setInterval(() => {
+  if (!tpDev || tpBusy || !needAwake() || reconnecting || vReconn) return;
+  if (Date.now() - tpLastTry >= $("tpint").value * 60000) tpFetch();
+}, 10000);
+$("tpint").addEventListener("change", () => { if (tpDev) addEntry({ typ: "Temperatur", name: `Abruf alle ${$("tpint").value} min`, start: Date.now() }); });
 $("tpget").addEventListener("click", async () => {
   if (!navigator.bluetooth) { tpStatus("Bluetooth ist in diesem Browser nicht verfügbar."); return; }
   if (!tpDev) {
     try { tpDev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "TP357" }], optionalServices: [TP_SVC] }); }
     catch (e) { tpStatus("Kein Thermometer gewählt."); return; }
+    addEntry({ typ: "Temperatur", name: `Thermometer verbunden: ${tpDev.name || "TP357"}, Abruf alle ${$("tpint").value} min`, start: Date.now() });
+    $("tpget").textContent = "Jetzt ablesen";
   }
   tpFetch();
 });
@@ -1394,7 +1386,7 @@ async function buildZip() {
     files.push({ name: "Temperatur.csv", text: s.join("\n") });
   }
   const blob = makeZip(files);
-  return { blob, name: "Messdaten5_" + idstamp(new Date()) + ".zip", list: files.map(f => f.name).join(", ") };
+  return { blob, name: "Messdaten6_" + idstamp(new Date()) + ".zip", list: files.map(f => f.name).join(", ") };
 }
 $("saveall").addEventListener("click", async () => {
   const z = await buildZip(), a = document.createElement("a");
