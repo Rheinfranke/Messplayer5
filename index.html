@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biodanza Messplayer 5</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 680px; margin: 1.5rem auto; padding: 0 1rem; color: #222; background: #fafaf7; line-height: 1.5; }
+  h1 { font-size: 1.4rem; font-weight: 500; margin-bottom: 0.2rem; }
+  fieldset { border: 1px solid #ccc; border-radius: 8px; margin: 1rem 0; padding: 0.8rem 1rem; }
+  legend { padding: 0 0.4rem; color: #555; }
+  label { display: block; margin: 0.4rem 0; }
+  input[type=number] { width: 5rem; font-size: 1rem; }
+  input[type=text] { width: 60%; font-size: 1rem; padding: 0.3rem; }
+  select { font-size: 1rem; padding: 0.2rem; max-width: 100%; }
+  button { font-size: 1rem; padding: 0.55rem 1rem; border-radius: 8px; border: 1px solid #888; background: #fff; cursor: pointer; margin: 0.25rem 0.25rem 0.25rem 0; }
+  button.main { background: #2d6a4f; color: #fff; border-color: #2d6a4f; }
+  button.act { background: #eef4f0; border-color: #9bb8a6; }
+  button.act.on, button.tog.on { background: #2d6a4f; color: #fff; border-color: #2d6a4f; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  #now { font-size: 1.5rem; margin: 0.8rem 0 0.1rem; min-height: 2rem; }
+  #sub, .stat { color: #555; font-variant-numeric: tabular-nums; }
+  .ok { color: #2d6a4f; } .miss { color: #a33; } .err { color: #a33; font-size: 0.9rem; }
+  .hint { color: #555; font-size: 0.9rem; }
+  .warn { background: #fff4d6; border: 1px solid #e5c46b; border-radius: 8px; padding: 0.5rem 0.8rem; margin: 0.8rem 0; font-size: 0.9rem; }
+  #bar { position: sticky; top: 0; z-index: 10; background: #fafaf7; border-bottom: 1px solid #ddd; padding: 0.4rem 0; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+  #wl.good { color: #2d6a4f; } #wl.bad { color: #fff; background: #a33; padding: 0 0.4rem; border-radius: 4px; }
+  .live { display: grid; grid-template-columns: auto 1fr; gap: 0.1rem 0.8rem; font-size: 0.9rem; font-variant-numeric: tabular-nums; margin-top: 0.4rem; }
+  .live span:nth-child(odd) { color: #777; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin-top: 0.8rem; }
+  td, th { border-bottom: 1px solid #ddd; padding: 0.25rem 0.4rem; text-align: left; font-variant-numeric: tabular-nums; }
+  #logwrap { max-height: 16rem; overflow: auto; }
+  .rv { border-bottom: 1px solid #e5e5e0; padding: 0.4rem 0; }
+  .rv b { font-weight: 500; }
+  .rv button { font-size: 0.9rem; padding: 0.35rem 0.6rem; }
+  .rv button.on { background: #2d6a4f; color: #fff; border-color: #2d6a4f; }
+  #blackout { display: none; position: fixed; inset: 0; background: #000; z-index: 9999; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  #unlockq { display: none; position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); background: #111; border: 1px solid #333; border-radius: 12px; padding: 1rem 1.2rem; text-align: center; color: #999; font-size: 1rem; }
+  #unlockq button { background: #222; color: #ccc; border-color: #444; margin: 0.6rem 0.4rem 0; min-width: 6rem; }
+  #bvis { display: none; text-align: center; padding: 0.6rem 0; }
+  #bcirc { width: 160px; height: 160px; border-radius: 50%; margin: 0 auto; background: #2d6a4f; transform: scale(0.45); }
+  #btxt { font-size: 1.4rem; margin-top: 0.3rem; color: #2d6a4f; font-variant-numeric: tabular-nums; }
+  #blackout #bvis { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+  #blackout #bcirc { background: #1d4a38; }
+  #blackout #btxt { color: #6f9c88; }
+  #unlockq { z-index: 2; }
+</style>
+</head>
+<body>
+<h1>Biodanza Messplayer 5</h1>
+<div class="hint">Herz, Atmung, Bewegung, Klangumgebung und Musik mit derselben Uhr. Gurt, Mikrofon und Musik laufen unabhängig voneinander.</div>
+
+<div id="bar"><span id="wl">Bildschirm: nicht nötig</span> · <span id="dur">keine Aufzeichnung</span> · <span id="mem">Speicher …</span></div>
+
+<fieldset>
+  <legend>0. Brustgurt verbinden (eSense, Polar H10 oder jeder Bluetooth-Pulsgurt)</legend>
+  <label><input type="checkbox" id="useacc" checked> Polar H10: Beschleunigung aufzeichnen (Atmung und Bewegung)</label>
+  <label>Abtastrate Beschleunigung: <select id="accrate"><option value="25">25 Hz</option><option value="50" selected>50 Hz</option><option value="100">100 Hz</option><option value="200">200 Hz</option></select></label>
+  <label><input type="checkbox" id="useecg" checked> Polar H10: Roh-EKG aufzeichnen (130 Hz, sichert die Herzschläge auch bei langer Hintergrundzeit)</label>
+  <button class="main" id="hrconnect">Gurt verbinden</button>
+  <button id="hrstop" disabled>Aufzeichnung beenden</button>
+  <div id="hrstatus" class="stat"></div>
+  <div id="pmdstatus" class="stat"></div>
+  <div class="hint">Die Hersteller-App vorher schließen. Der Gurt kann nur mit einer App gleichzeitig verbunden sein. Beim eSense werden die Polar-Optionen einfach übergangen.</div>
+</fieldset>
+
+<fieldset>
+  <legend>Fußsensor (Polar Verity Sense)</legend>
+  <div class="hint">Über dem Knöchel tragen, immer gleich herum. Einschalten und auf blaues Licht stellen (Sensormodus). Polar-App vorher schließen. Am Anfang und Ende dreimal fest aufstampfen.</div>
+  <button class="main" id="vconnect">Fußsensor verbinden</button>
+  <button id="vstop" disabled>Fußsensor beenden</button>
+  <div id="vstatus" class="stat"></div>
+</fieldset>
+
+<fieldset>
+  <legend>1. Klangumgebung (Mikrofon)</legend>
+  <div class="hint">Es wird kein Ton gespeichert. Der Player berechnet nur Kennzahlen pro Sekunde (Lautstärke, Klangfarbe, Rhythmus, Tonart) und erkennt plötzliche Geräusche wie Hupen oder Knallen.</div>
+  <label>Mikrofon: <select id="micdev"><option value="">Standard</option></select></label>
+  <button class="main" id="micstart">Mikrofon starten</button>
+  <button id="micstop" disabled>Mikrofon stoppen</button>
+  <button class="tog" id="phones">Kopfhörer: ab</button>
+  <label><input type="checkbox" id="tapown"> Auch die eigene Musik des Players auswerten (ab dem nächsten Start)</label>
+  <div class="live">
+    <span>Pegel</span><span id="lv">–</span>
+    <span>Bass / Mitte / Höhe</span><span id="bands">–</span>
+    <span>Rhythmus</span><span id="tempo">–</span>
+    <span>Tonart</span><span id="key">–</span>
+    <span>Art (grob)</span><span id="cls">–</span>
+    <span>Letztes Ereignis</span><span id="evt">–</span>
+    <span>Atmung (Gurt)</span><span id="breath">–</span>
+  </div>
+  <div class="hint">Mit Bluetooth-Kopfhörern schaltet Android manchmal auf das Headset-Mikrofon um, dann klingt die Musik dumpf wie am Telefon. In dem Fall oben das eingebaute Mikrofon wählen.</div>
+</fieldset>
+
+<fieldset>
+  <legend>2. Musikdateien wählen</legend>
+  <input type="file" id="files" multiple accept="audio/*">
+  <div class="hint">Lassen sich nicht alle auf einmal markieren, wähle sie einzeln nacheinander. Der Player sammelt sie.</div>
+  <div id="filecheck"></div>
+</fieldset>
+
+<fieldset>
+  <legend>3. Einstellungen</legend>
+  <label>Beginnen bei Block Nr.: <input type="number" id="block" min="1" value="1" step="1">
+    <span class="err" id="blockerr"></span></label>
+  <label><input type="checkbox" id="silence"> Stille als sechstes „Stück“ einmischen (3 Minuten, als Vergleich ohne Musik)</label>
+  <div id="order" class="hint"></div>
+  <label><input type="checkbox" id="keepon" checked> Unhörbaren Wachhalte-Ton abspielen (hält die Seite bei gesperrtem Bildschirm wach)</label>
+</fieldset>
+
+<fieldset>
+  <legend>Einschlafen</legend>
+  <div class="hint">Die Musik wird über die gewählte Zeit gleichmäßig leiser und hört dann auf. Gurt und Mikrofon messen weiter.</div>
+  <label>Musik: <button class="tog on" id="slnormal">Normal</button><button class="tog" id="slcalm">Nur ruhig</button></label>
+  <label>Ausblenden über: <select id="sldur"><option value="20">20 Minuten</option><option value="30" selected>30 Minuten</option><option value="45">45 Minuten</option><option value="60">60 Minuten</option></select></label>
+  <button class="main" id="slstart" disabled>Einschlafen starten</button>
+  <button id="slstop" style="display:none">Einschlafen abbrechen</button>
+  <div id="slstatus" class="stat"></div>
+</fieldset>
+
+<fieldset>
+  <legend>Atemhilfe</legend>
+  <div class="hint">Zeiten in Sekunden. Eine Pause auf 0 entfällt samt ihrem Ton. Optik und Töne schalten sich getrennt ein und aus.</div>
+  <label>Einatmen: <input type="number" id="b0" min="0.5" max="60" step="0.5" value="4"></label>
+  <label>Pause: <input type="number" id="b1" min="0" max="60" step="0.5" value="0"></label>
+  <label>Ausatmen: <input type="number" id="b2" min="0.5" max="60" step="0.5" value="6"></label>
+  <label>Pause 2: <input type="number" id="b3" min="0" max="60" step="0.5" value="0"></label>
+  <button class="tog" id="bopt">Optik: aus</button><button class="tog" id="bton">Töne: aus</button>
+  <label>Lautstärke Töne: <input type="range" id="bvol" min="0" max="100" value="60"></label>
+  <div class="hint">In der Einschlaffunktion werden die Töne mit der Musik leiser und sind am Ende aus. Einatmen: zwei Töne aufwärts. Pause: ein hoher leiser Ton. Ausatmen: zwei Töne abwärts. Pause 2: ein tiefer leiser Ton. Die Optik erscheint auch in der Schwarzsperre.</div>
+  <div id="bstatus" class="stat"></div>
+  <div id="bhome"><div id="bvis"><div id="bcirc"></div><div id="btxt"></div></div></div>
+</fieldset>
+
+<fieldset>
+  <legend>Raumtemperatur (ThermoPro TP357)</legend>
+  <div class="hint">Am Ende der Messung abholen. Das Thermometer speichert einen Wert pro Minute für die letzten 24 Stunden. Nach dem ersten Abholen geschieht es beim Beenden der Gurtaufzeichnung von selbst.</div>
+  <button class="main" id="tpget">Temperatur abholen</button>
+  <div id="tpstatus" class="stat"></div>
+</fieldset>
+
+<button class="main" id="start" disabled>Musik starten</button>
+<button id="stop" disabled>Musik stoppen</button>
+<button class="main" id="resume" style="display:none">Weiter</button>
+<button id="blackbtn">Schwarzsperre</button>
+
+<div id="now"></div>
+<div id="sub"></div>
+
+<fieldset>
+  <legend>4. Was tust du gerade? (antippen, wenn sich die Tätigkeit ändert)</legend>
+  <div id="acts"></div>
+  <input type="text" id="note" placeholder="Eigene Notiz, z. B. Kaffee getrunken"> <button id="addnote">Notiz</button>
+</fieldset>
+
+<fieldset id="review" style="display:none">
+  <legend>5. Nachbefragung: Wie hat jedes Stück gewirkt?</legend>
+  <div class="hint">Nach der Sitzung in Ruhe ausfüllen. Ein Tipp pro Stück genügt, ändern geht jederzeit.</div>
+  <div id="reviewlist"></div>
+</fieldset>
+
+<fieldset>
+  <legend>6. Daten speichern</legend>
+  <button class="main" id="saveall">Alles speichern (ZIP)</button>
+  <button class="main" id="shareall">Teilen</button>
+  <button class="main" id="sharenow" style="display:none">Jetzt teilen</button>
+  <div id="savestatus" class="hint">„Alles speichern“ legt die ZIP-Datei in die Downloads. „Teilen“ öffnet das Teilen-Menü, z. B. für E-Mail, WhatsApp oder die Claude-App. Die Datei unverändert an Claude schicken.</div>
+</fieldset>
+
+<div id="logwrap"><table id="log"><thead><tr><th>Typ</th><th>Block</th><th>Bezeichnung</th><th>Start</th><th>Ende</th></tr></thead><tbody></tbody></table></div>
+
+<fieldset style="margin-top:3rem">
+  <legend>Gespeicherte Daten löschen</legend>
+  <div class="hint">Vorher speichern oder teilen! Zum Löschen „ok“ eintippen und auf „Löschen“ tippen.</div>
+  <input type="text" id="clearok" placeholder="ok" autocomplete="off" style="width:5rem"> <button id="clear">Löschen</button>
+  <div id="clearstatus" class="hint"></div>
+</fieldset>
+<div id="guard" style="display:none;position:fixed;inset:0;z-index:9998"></div>
+
+<div id="blackout"><div id="unlockq">Entsperren?<br><button id="unlockyes">Ja</button><button id="unlockno">Nein</button></div></div>
+
+<script>
+const PIECES = [
+  { key: "raiz",  name: "Raíz Negra",           match: /raiz|raíz/i },
+  { key: "tamb",  name: "Tamborins (3×)", base: "Tamborins", match: /tamb/i, reps: 3 },
+  { key: "copp",  name: "Coppélia",             match: /copp/i },
+  { key: "lotus", name: "Blue Lotus",           match: /lotus/i },
+  { key: "cav",   name: "Cavalleria Rusticana", match: /cavall/i }
+];
+const SILENCE = { key: "silence", name: "Stille" };
+const CALM = ["lotus", "cav"];
+const ACTIVITIES = ["Sitzen ruhig", "Arbeiten am Schreibtisch", "Stehen", "Gehen", "Radfahren", "Autofahren", "Hausarbeit", "Kochen/Essen", "Gespräch", "Sport", "Liegen/Ruhen", "Pause/Unterbrechung"];
+const FEEL = ["Blick weit", "Antrieb", "Nach innen", "Ruhig", "Neutral"];
+
+const $ = id => document.getElementById(id);
+const pad = (n, l = 2) => String(n).padStart(l, "0");
+const stamp = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+const dstamp = d => `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+const idstamp = d => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+const num = (x, d = 1) => (x === null || x === undefined || !Number.isFinite(x)) ? "" : x.toFixed(d).replace(".", ",");
+const hms = s => `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(Math.floor(s % 60))}`;
+
+/* ================= Speicher (IndexedDB, nur anhängen) ================= */
+let db = null, queue = [], counts = { log: 0, beat: 0, acc: 0, ecg: 0, snd: 0, evt: 0, sync: 0, atem: 0, temp: 0, foot: 0 };
+function openDb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("messplayer2", 1);
+    r.onupgradeneeded = () => { const s = r.result.createObjectStore("rec", { autoIncrement: true }); s.createIndex("k", "k"); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+function put(k, d) { queue.push({ k, d }); counts[k] = (counts[k] || 0) + 1; }
+function flush() {
+  if (!db || !queue.length) return Promise.resolve();
+  const batch = queue; queue = [];
+  return new Promise(res => {
+    const tx = db.transaction("rec", "readwrite"), s = tx.objectStore("rec");
+    batch.forEach(x => s.add(x));
+    tx.oncomplete = () => res();
+    tx.onerror = () => { queue = batch.concat(queue); res(); };
+  });
+}
+setInterval(flush, 3000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flush(); });
+window.addEventListener("pagehide", flush);
+function readKind(k) {
+  return new Promise(res => {
+    const out = [], r = db.transaction("rec").objectStore("rec").index("k").openCursor(IDBKeyRange.only(k));
+    r.onsuccess = () => { const c = r.result; if (c) { out.push(c.value.d); c.continue(); } else res(out); };
+    r.onerror = () => res(out);
+  });
+}
+function countKind(k) {
+  return new Promise(res => { const r = db.transaction("rec").objectStore("rec").index("k").count(IDBKeyRange.only(k)); r.onsuccess = () => res(r.result); r.onerror = () => res(0); });
+}
+async function memStatus() {
+  let t = `Gerät: ${counts.log} Einträge, ${counts.beat} Herzschläge, ${counts.snd} s Klang, ${counts.evt} Geräusche, ${counts.acc} ACC-Pakete` + (counts.ecg ? `, ${counts.ecg} EKG-Pakete` : "");
+  try { const e = await navigator.storage.estimate(); t += ` · belegt ${(e.usage / 1e6).toFixed(1)} von ${(e.quota / 1e6).toFixed(0)} MB`; } catch (e) {}
+  $("mem").textContent = t;
+}
+setInterval(memStatus, 10000);
+
+/* ================= Protokoll ================= */
+let log = [];
+function row(r) {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td>${r.typ}</td><td>${r.block ?? ""}</td><td>${r.name}</td><td>${stamp(new Date(r.start))}</td><td>${r.end ? stamp(new Date(r.end)) : ""}</td>`;
+  const tb = $("log").querySelector("tbody"); tb.insertBefore(tr, tb.firstChild);
+  while (tb.children.length > 300) tb.removeChild(tb.lastChild);
+}
+function addEntry(r) { if (!r.session) r.session = sessionId || hrRec || micRec || ""; log.push(r); row(r); put("log", r); }
+
+/* ================= Wachhalten ================= */
+let wakeLock = null, wlPending = null;
+function needAwake() { return running || hrWanted || micOn || !!breath || vWanted; }
+async function keepAwake() {
+  keepTone();
+  if (wakeLock && !wakeLock.released) return;
+  if (wlPending) return wlPending;
+  wlPending = (async () => {
+    try {
+      const wl = await navigator.wakeLock.request("screen"); wakeLock = wl;
+      wl.addEventListener("release", () => { wlShow(); if (wl === wakeLock && needAwake()) addEntry({ typ: "Bildschirm", name: "Wachhalten verloren", start: Date.now() }); });
+    } catch (e) {}
+    wlPending = null; wlShow();
+  })();
+  return wlPending;
+}
+
+/* Unhörbarer Wachhalte-Ton: 25 Hz, sehr leise. Für Chrome hörbar, für Ohr und Handylautsprecher nicht. */
+function toneWav(sec, amp) {
+  const rate = 8000, n = rate * sec, buf = new ArrayBuffer(44 + 2 * n), v = new DataView(buf);
+  const w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, "RIFF"); v.setUint32(4, 36 + 2 * n, true); w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  w(36, "data"); v.setUint32(40, 2 * n, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + 2 * i, Math.round(amp * 32767 * Math.sin(2 * Math.PI * 25 * i / rate)), true);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+const keep = new Audio(toneWav(4, 0.003)); keep.loop = true;
+let keepLogged = false;
+function keepTone() {
+  if (!$("keepon").checked || !needAwake()) { if (!keep.paused) keep.pause(); return; }
+  if (keep.paused) keep.play().then(() => { if (!keepLogged) { keepLogged = true; addEntry({ typ: "Bildschirm", name: "Wachhalte-Ton läuft", start: Date.now() }); } }).catch(() => {});
+}
+setInterval(keepTone, 5000);
+function wlShow() {
+  const el = $("wl");
+  if (!needAwake()) { el.className = ""; el.textContent = "Bildschirm: nicht nötig"; return; }
+  if (wakeLock && !wakeLock.released) { el.className = "good"; el.textContent = "✓ Bildschirm bleibt an"; }
+  else { el.className = "bad"; el.textContent = "⚠ Bildschirm kann ausgehen, Seite antippen"; }
+}
+setInterval(() => { if (needAwake() && document.visibilityState === "visible") keepAwake(); wlShow(); }, 5000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && needAwake()) keepAwake(); });
+document.addEventListener("pointerdown", () => { if (needAwake()) keepAwake(); });
+
+let hiddenSince = null;
+document.addEventListener("visibilitychange", () => {
+  if (!needAwake()) return;
+  if (document.visibilityState === "hidden") { hiddenSince = Date.now(); addEntry({ typ: "Bildschirm", name: "Seite im Hintergrund, Messung kann aussetzen", start: hiddenSince }); flush(); }
+  else if (hiddenSince) {
+    const s = Math.round((Date.now() - hiddenSince) / 1000);
+    addEntry({ typ: "Bildschirm", name: `Seite wieder im Vordergrund nach ${s} s`, start: hiddenSince, end: Date.now() });
+    if (s > 5) $("savestatus").textContent = `Hinweis: Die Seite war ${s} s im Hintergrund. Herzschläge werden nachgeliefert, Klangwerte fehlen für diese Zeit.`;
+    hiddenSince = null;
+  }
+});
+let recStart = null;
+setInterval(() => {
+  $("dur").textContent = recStart && needAwake() ? "Aufzeichnung läuft seit " + hms((Date.now() - recStart) / 1000) : "keine Aufzeichnung";
+}, 1000);
+function markRec() { if (!recStart) recStart = Date.now(); }
+
+/* ================= Musik ================= */
+function williams(n) {
+  const base = [0]; let lo = 1, hi = n - 1;
+  for (let k = 1; k < n; k++) base.push(k % 2 ? lo++ : hi--);
+  const rows = [];
+  for (let i = 0; i < n; i++) rows.push(base.map(v => (v + i) % n));
+  if (n % 2) for (let i = 0; i < n; i++) rows.push([...rows[i]].reverse());
+  return rows;
+}
+const urls = {};
+let running = false, audio = new Audio(), blockNo = 1, pos = 0, current = null, sessionId = null;
+function items() { return $("silence").checked ? [...PIECES, SILENCE] : PIECES; }
+function orderOf(b) { const o = williams(items().length); return o[(b - 1) % o.length].map(i => items()[i]); }
+function readBlock() {
+  const v = parseInt(String($("block").value).replace(",", "."), 10);
+  if (!Number.isFinite(v) || v < 1) { $("blockerr").textContent = "Bitte eine ganze Zahl ab 1 eingeben."; return null; }
+  $("blockerr").textContent = ""; return v;
+}
+function showOrder() {
+  const b = readBlock(); if (b === null) { $("order").textContent = ""; return; }
+  $("order").textContent = `Block ${b}: ` + orderOf(b).map(p => p.name).join(" → ") + `. Danach geht es endlos mit Block ${b + 1}, ${b + 2} … weiter.`;
+}
+$("block").addEventListener("input", () => { showOrder(); checkReady(); });
+$("silence").addEventListener("change", () => { showOrder(); checkReady(); });
+function silentWav(sec) {
+  const rate = 8000, n = rate * sec, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  w(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+urls.silence = toneWav(180, 0.003);
+$("files").addEventListener("change", e => {
+  for (const f of e.target.files) { const p = PIECES.find(p => p.match.test(f.name)); if (p) urls[p.key] = URL.createObjectURL(f); }
+  $("filecheck").innerHTML = PIECES.map(p => `<div class="${urls[p.key] ? "ok" : "miss"}">${urls[p.key] ? "✓" : "✗"} ${p.name}</div>`).join("");
+  checkReady(); e.target.value = "";
+});
+function checkReady() {
+  const ok = PIECES.every(p => urls[p.key]) && readBlock() !== null;
+  $("start").disabled = running || !ok;
+  if (!sleep) $("slstart").disabled = !ok && !running;
+}
+
+$("acts").innerHTML = ACTIVITIES.map(a => `<button class="act" data-a="${a}">${a}</button>`).join("");
+$("acts").addEventListener("click", e => {
+  const a = e.target.dataset.a; if (!a) return;
+  document.querySelectorAll(".act").forEach(b => b.classList.toggle("on", b.dataset.a === a));
+  addEntry({ typ: "Tätigkeit", name: a, start: Date.now() });
+});
+$("addnote").addEventListener("click", () => {
+  const t = $("note").value.trim(); if (!t) return;
+  addEntry({ typ: "Notiz", name: t, start: Date.now() }); $("note").value = "";
+});
+
+/* Jeder Durchgang eigene Zeile, Start sofort geschrieben, Aussetzer und Abspielposition mitprotokolliert */
+let stall = null, stallSeen = false, lastSync = 0, lastDrift = null;
+function passName(c = current) { return c.reps > 1 ? `${c.name} ${c.rep}/${c.reps}` : c.name; }
+function openStall(cause) {
+  if (!current || stall) return;
+  stall = { t: Date.now(), pos: audio.currentTime || 0, cause };
+}
+function closeStall() {
+  if (!stall) return;
+  const st = stall; stall = null; stallSeen = true;
+  if (!current || Date.now() - st.t < 100) return;
+  addEntry({ typ: "Aussetzer", block: current.block, pos: current.pos, name: `${passName()}: ${st.cause} bei ${st.pos.toFixed(1)} s`, start: st.t, end: Date.now() });
+  flush();
+}
+function syncPos(force, noCheck) {
+  if (!current || !current.start) return;
+  const now = Date.now();
+  if (!force && now - lastSync < 10000) return;
+  lastSync = now;
+  const c = audio.currentTime, d = Math.round(now - current.start - c * 1000);
+  put("sync", { t: now, s: sessionId, b: current.block, p: current.pos, r: current.rep, n: passName(), c, d });
+  if (!noCheck && lastDrift !== null && !stall && !stallSeen && Math.abs(d - lastDrift) > 300)
+    addEntry({ typ: "Aussetzer", block: current.block, pos: current.pos, name: `${passName()}: ${d - lastDrift} ms Abweichung ohne Meldung des Browsers bei ${c.toFixed(1)} s`, start: now });
+  lastDrift = d; stallSeen = false;
+}
+function markStart() {
+  /* Erst wenn der Ton wirklich läuft: Das Stocken am Stückanfang gehört so nicht mehr zur Startzeit */
+  if (!current || current.start) return;
+  const now = Date.now();
+  current.start = Math.round(now - (audio.currentTime || 0) * 1000);
+  lastDrift = null; stallSeen = false;
+  addEntry({ typ: "Stückstart", block: current.block, pos: current.pos, name: passName(), start: current.start });
+  syncPos(true); flush();
+}
+function finishPass(suffix) {
+  if (!current) return;
+  syncPos(true, true); closeStall();
+  current.end = Date.now(); if (!current.start) current.start = current.end;
+  addEntry({ typ: "Stück", block: current.block, pos: current.pos, rep: current.rep, name: passName() + (suffix || ""), start: current.start, end: current.end });
+  flush();
+}
+function tryPlay() {
+  if (ctx && ctx.state !== "running") ctx.resume().catch(() => {});
+  audio.play().then(() => {
+    $("resume").style.display = "none";
+  }).catch(() => {
+    openStall("Wiedergabe blockiert");
+    $("now").textContent = "Musik angehalten. Bitte auf „Weiter“ tippen.";
+    $("resume").style.display = "inline-block";
+  });
+}
+$("resume").addEventListener("click", tryPlay);
+let calmIdx = 0;
+function next() {
+  if (!running) return;
+  let p;
+  if (sleep && sleep.calm) {
+    p = PIECES.find(x => x.key === CALM[calmIdx % CALM.length]); calmIdx++;
+    current = { typ: "Stück", block: "Schlaf", pos: calmIdx, name: p.base || p.name, start: null, end: null, rep: 1, reps: 1 };
+  } else {
+    const order = orderOf(blockNo);
+    if (pos >= order.length) { blockNo++; pos = 0; return next(); }
+    p = order[pos];
+    current = { typ: "Stück", block: blockNo, pos: pos + 1, name: p.base || p.name, start: null, end: null, rep: 1, reps: p.reps || 1 };
+  }
+  audio.src = urls[p.key]; tryPlay();
+  try { navigator.mediaSession.metadata = new MediaMetadata({ title: p.name, artist: `Block ${blockNo}, Position ${pos + 1}` }); } catch (e) {}
+  $("now").textContent = passName();
+}
+setInterval(() => { if (running && current && audio.paused && !audio.ended) { openStall("Wiedergabe angehalten"); tryPlay(); } }, 3000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && running && current && audio.paused) tryPlay(); });
+audio.addEventListener("playing", () => { closeStall(); if (current) $("now").textContent = passName(); });
+audio.addEventListener("waiting", () => { if (running && current && current.start) openStall("Puffern"); });
+audio.addEventListener("pause", () => { if (running && current && current.start && !audio.ended && !(audio.duration && audio.currentTime >= audio.duration - 0.05)) openStall("Wiedergabe angehalten"); });
+audio.addEventListener("timeupdate", () => {
+  if (!current || audio.paused) return;
+  if (!current.start && audio.currentTime >= 0.25) markStart();
+  if (stall && audio.readyState >= 3 && audio.currentTime > stall.pos + 0.2) closeStall();
+  syncPos();
+});
+audio.addEventListener("ended", () => {
+  if (!current) return;
+  finishPass();
+  if (current.rep < current.reps) { current.rep++; current.start = null; current.end = null; audio.currentTime = 0; $("now").textContent = passName(); tryPlay(); return; }
+  current = null;
+  if (!(sleep && sleep.calm)) pos++;
+  next();
+});
+audio.addEventListener("error", () => {
+  if (current) addEntry({ typ: "Fehler", block: current.block, name: "Wiedergabefehler bei " + passName(), start: Date.now() });
+  stall = null; current = null; pos++; setTimeout(next, 500);
+});
+setInterval(() => {
+  if (!running || !current) return;
+  const left = Math.max(0, Math.round((audio.duration || 0) * (current.reps - current.rep + 1) - audio.currentTime));
+  $("sub").textContent = `Block ${current.block}, Position ${current.pos}${current.reps > 1 ? `, Durchgang ${current.rep}/${current.reps}` : ""}  ·  noch ${Math.floor(left / 60)}:${pad(left % 60)}  ·  ${stamp(new Date()).slice(0, 8)}`;
+}, 500);
+
+function startMusic() {
+  const b = readBlock(); if (b === null) return false;
+  running = true; blockNo = b; pos = 0; sessionId = idstamp(new Date()); markRec();
+  $("start").disabled = true; $("stop").disabled = false; $("block").disabled = true; $("silence").disabled = true;
+  keepAwake();
+  if ($("tapown").checked) tapOwn();
+  addEntry({ typ: "Start", name: "Musik gestartet ab Block " + b + ($("silence").checked ? " (mit Stille)" : ""), start: Date.now() });
+  next(); return true;
+}
+$("start").addEventListener("click", () => startMusic());
+
+/* ================= Einschlafen ================= */
+let sleep = null, sleepT = null;
+function setVol(db) { audio.volume = Math.max(0, Math.min(1, Math.pow(10, db / 20))); }
+$("slnormal").addEventListener("click", () => { $("slnormal").classList.add("on"); $("slcalm").classList.remove("on"); });
+$("slcalm").addEventListener("click", () => { $("slcalm").classList.add("on"); $("slnormal").classList.remove("on"); });
+$("slstart").addEventListener("click", () => {
+  const calm = $("slcalm").classList.contains("on"), mins = +$("sldur").value;
+  sleep = { calm, t0: Date.now(), dur: mins * 60000, lastLog: -1 };
+  setVol(0);
+  addEntry({ typ: "Einschlafen", name: `Beginn, ${mins} min Ausblenden, ${calm ? "nur ruhige Stücke" : "normale Reihenfolge"}`, start: Date.now() });
+  if (!running) { if (!startMusic()) { sleep = null; return; } }
+  else if (calm) { if (current && current.start) finishPass(" (abgebrochen für Einschlafen)"); stall = null; current = null; next(); }
+  $("slstart").style.display = "none"; $("slstop").style.display = "inline-block";
+  $("slnormal").disabled = $("slcalm").disabled = $("sldur").disabled = true;
+  sleepT = setInterval(sleepTick, 1000); sleepTick();
+});
+function sleepTick() {
+  if (!sleep) return;
+  const f = Math.min(1, (Date.now() - sleep.t0) / sleep.dur), db = -40 * f;
+  setVol(f >= 1 ? -100 : db);
+  bFade = f >= 1 ? 0 : Math.pow(10, db / 20); bApplyGain();
+  const left = Math.max(0, Math.round((sleep.dur - (Date.now() - sleep.t0)) / 1000));
+  $("slstatus").textContent = `Lautstärke ${db.toFixed(0)} dB · noch ${Math.floor(left / 60)}:${pad(left % 60)} min`;
+  const minute = Math.floor((Date.now() - sleep.t0) / 60000);
+  if (minute !== sleep.lastLog) { sleep.lastLog = minute; addEntry({ typ: "Lautstärke", name: `${db.toFixed(1)} dB`, start: Date.now() }); }
+  if (f >= 1) { endSleep("Ausgeblendet, Musik aus"); bFade = 0; bApplyGain(); stopMusic(); }
+}
+function endSleep(msg) {
+  if (!sleep) return;
+  clearInterval(sleepT); sleep = null; setVol(0); bFade = 1; bApplyGain();
+  addEntry({ typ: "Einschlafen", name: msg, start: Date.now() });
+  $("slstart").style.display = "inline-block"; $("slstop").style.display = "none";
+  $("slnormal").disabled = $("slcalm").disabled = $("sldur").disabled = false;
+  $("slstatus").textContent = msg + ". Gurt und Mikrofon laufen weiter.";
+  checkReady();
+}
+$("slstop").addEventListener("click", () => { endSleep("Einschlafen abgebrochen"); });
+function stopMusic(reason) {
+  if (!running) return;
+  running = false; audio.pause();
+  if (current && current.start) finishPass(" (abgebrochen)");
+  stall = null; current = null;
+  addEntry({ typ: "Stopp", name: `Musik beendet, nächster Block wäre ${blockNo + (pos > 0 ? 1 : 0)}`, start: Date.now(), session: sessionId });
+  $("now").textContent = "Musik gestoppt."; $("sub").textContent = "";
+  $("stop").disabled = true; $("block").disabled = false; $("silence").disabled = false;
+  $("block").value = blockNo + (pos > 0 ? 1 : 0); showOrder(); checkReady();
+  if (reason) addEntry({ typ: "Stopp", name: reason, start: Date.now() });
+  sessionId = null; renderReview(); flush();
+}
+$("stop").addEventListener("click", () => { if (sleep) endSleep("Einschlafen abgebrochen (Musik gestoppt)"); stopMusic(); });
+
+/* ================= Brustgurt: Herzfrequenz ================= */
+const PMD_SVC = "fb005c80-02e7-f387-1cad-8acd2d8df0c8", PMD_CP = "fb005c81-02e7-f387-1cad-8acd2d8df0c8", PMD_DATA = "fb005c82-02e7-f387-1cad-8acd2d8df0c8";
+let hrDev = null, hrChar = null, hrWanted = false, hrLast = 0, hrRec = null, nBeats = 0, hrDevListened = null;
+let lastBeat = null, lastArr = 0, burst = null, nLate = 0;
+function hrStatus(t) { $("hrstatus").textContent = t; }
+function pmdStatus(t) { $("pmdstatus").textContent = t; }
+function onHr(ev) {
+  const v = ev.target.value, now = Date.now(); let o = 1; const flags = v.getUint8(0);
+  const bpm = (flags & 1) ? v.getUint16(1, true) : v.getUint8(1); o += (flags & 1) ? 2 : 1;
+  if (flags & 8) o += 2;
+  const rrs = [];
+  if (flags & 16) for (; o + 1 < v.byteLength; o += 2) rrs.push(v.getUint16(o, true) * 1000 / 1024);
+  const gap = now - lastArr; lastArr = now;
+  if (rrs.length) {
+    if (burst && gap < 300) { burst.rr.push(...rrs); burst.n++; }
+    else {
+      if (burst) finishBurst(now - rrs.reduce((a, b) => a + b, 0));
+      if (gap > 3000 && lastBeat !== null) burst = { rr: [...rrs], from: lastBeat, n: 1 };
+      else liveBeats(rrs, now);
+    }
+  }
+  hrLast = now;
+  hrStatus(`Verbunden · Puls ${bpm} · ${nBeats} Herzschläge in dieser Aufzeichnung` + (nLate ? ` · ${nLate} nachgeliefert` : ""));
+}
+function liveBeats(rrs, now) {
+  /* Schlag an Schlag über die RR-Abstände verketten. Neu an die Ankunftszeit anlegen nur, wenn die Kette über 3 s davonläuft. */
+  const sum = rrs.reduce((a, b) => a + b, 0);
+  let t = (lastBeat !== null && Math.abs(lastBeat + sum - now) < 3000) ? lastBeat + sum : now;
+  const fresh = [];
+  for (let i = rrs.length - 1; i >= 0; i--) { fresh.unshift([t, Math.round(rrs[i]), hrRec, now]); t -= rrs[i]; }
+  fresh.forEach(b => put("beat", [Math.round(b[0]), b[1], b[2], b[3]])); nBeats += fresh.length; lastBeat = fresh[fresh.length - 1][0];
+}
+function finishBurst(endT) {
+  const b = burst; burst = null; if (!b) return;
+  if (b.n < 3) { let t = endT; const out = []; for (let i = b.rr.length - 1; i >= 0; i--) { out.unshift(t); t -= b.rr[i]; } b.rr.forEach((r, i) => put("beat", [Math.round(out[i]), Math.round(r), hrRec, Date.now()])); nBeats += b.rr.length; lastBeat = Math.round(endT); return; }
+  const total = b.rr.reduce((a, c) => a + c, 0), elapsed = endT - b.from, now = Date.now();
+  let times = [];
+  if (Math.abs(elapsed - total) < 3000) { let t = b.from; b.rr.forEach(r => { t += r; times.push(t); }); }
+  else { let t = endT; for (let i = b.rr.length - 1; i >= 0; i--) { times.unshift(t); t -= b.rr[i]; }
+    if (elapsed - total > 3000) addEntry({ typ: "Gurt", name: `Herzschläge fehlen für ca. ${Math.round((elapsed - total) / 1000)} s vor dem Nachliefern (EKG prüfen)`, start: b.from, end: Math.round(endT - total) }); }
+  b.rr.forEach((r, i) => put("beat", [Math.round(times[i]), Math.round(r), hrRec, now]));
+  nBeats += b.rr.length; nLate += b.rr.length; lastBeat = Math.round(times[times.length - 1]);
+  addEntry({ typ: "Gurt", name: `${b.rr.length} Herzschläge nachgeliefert und zurückgerechnet`, start: b.from, end: Math.round(endT) });
+}
+setInterval(() => { if (burst && Date.now() - lastArr > 2000) finishBurst(lastArr); }, 1000);
+setInterval(() => {
+  if (hrWanted && hrLast && Date.now() - hrLast > 10000) hrStatus("Kein Signal seit " + Math.round((Date.now() - hrLast) / 1000) + " s. Gurt anfeuchten, Bildschirm anlassen.");
+}, 5000);
+
+/* ================= Brustgurt: Polar PMD (Beschleunigung, EKG) ================= */
+let pmdCp = null, pmdData = null, pmdOn = false, pmdLast = 0, accN = 0, ecgN = 0, pmdWarned = {};
+const breathBuf = [];   // [t, x, y, z] auf ca. 10 Hz verdichtet
+let accAgg = null;
+function i24(dv, o) { const v = dv.getUint8(o) | (dv.getUint8(o + 1) << 8) | (dv.getUint8(o + 2) << 16); return v & 0x800000 ? v - 0x1000000 : v; }
+function onPmd(ev) {
+  const v = ev.target.value, now = Date.now();
+  if (v.byteLength < 10) return;
+  const type = v.getUint8(0), tsNs = v.getBigUint64(1, true), ft = v.getUint8(9), tsUs = Number(tsNs / 1000n);
+  pmdLast = now;
+  if (type === 2) {
+    const rate = +$("accrate").value, out = [];
+    if (ft === 0) for (let o = 10; o + 2 < v.byteLength; o += 3) out.push(v.getInt8(o), v.getInt8(o + 1), v.getInt8(o + 2));
+    else if (ft === 1) for (let o = 10; o + 5 < v.byteLength; o += 6) out.push(v.getInt16(o, true), v.getInt16(o + 2, true), v.getInt16(o + 4, true));
+    else if (ft === 2) for (let o = 10; o + 8 < v.byteLength; o += 9) out.push(i24(v, o), i24(v, o + 3), i24(v, o + 6));
+    else { if (!pmdWarned["a" + ft]) { pmdWarned["a" + ft] = 1; addEntry({ typ: "Gurt", name: "Unbekanntes ACC-Format " + ft, start: now }); } return; }
+    put("acc", { t: now, us: tsUs, r: rate, s: hrRec, v: out }); accN += out.length / 3;
+    const n = out.length / 3, dt = 1000 / rate;
+    for (let i = 0; i < n; i++) {
+      const ti = now - (n - 1 - i) * dt;
+      if (!accAgg) accAgg = { t0: ti, n: 0, x: 0, y: 0, z: 0 };
+      accAgg.n++; accAgg.x += out[3 * i]; accAgg.y += out[3 * i + 1]; accAgg.z += out[3 * i + 2];
+      if (ti - accAgg.t0 >= 100) { breathBuf.push([ti, accAgg.x / accAgg.n, accAgg.y / accAgg.n, accAgg.z / accAgg.n]); accAgg = null; }
+    }
+    while (breathBuf.length && now - breathBuf[0][0] > 90000) breathBuf.shift();
+  } else if (type === 0) {
+    const out = [];
+    if (ft === 0) for (let o = 10; o + 2 < v.byteLength; o += 3) out.push(i24(v, o));
+    else { if (!pmdWarned["e" + ft]) { pmdWarned["e" + ft] = 1; addEntry({ typ: "Gurt", name: "Unbekanntes EKG-Format " + ft, start: now }); } return; }
+    put("ecg", { t: now, us: tsUs, r: 130, s: hrRec, v: out }); ecgN += out.length;
+  }
+}
+function onPmdCp(ev) {
+  const v = ev.target.value;
+  if (v.getUint8(0) === 0xF0 && v.byteLength >= 4) {
+    const what = { 0: "EKG", 2: "Beschleunigung" }[v.getUint8(2)] || ("Typ " + v.getUint8(2)), st = v.getUint8(3);
+    if (v.getUint8(1) === 2) addEntry({ typ: "Gurt", name: what + (st === 0 ? " gestartet" : " Start abgelehnt (Code " + st + ")"), start: Date.now() });
+  }
+}
+async function pmdAttach(server) {
+  pmdOn = false;
+  if (!$("useacc").checked && !$("useecg").checked) { pmdStatus(""); return; }
+  try {
+    const svc = await server.getPrimaryService(PMD_SVC);
+    pmdCp = await svc.getCharacteristic(PMD_CP); pmdData = await svc.getCharacteristic(PMD_DATA);
+  } catch (e) { pmdStatus("Kein Polar-Datenkanal (normal beim eSense). Nur Herzschläge."); return; }
+  pmdCp.addEventListener("characteristicvaluechanged", onPmdCp);
+  pmdData.addEventListener("characteristicvaluechanged", onPmd);
+  await pmdCp.startNotifications();
+  await pmdData.startNotifications();
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  if ($("useacc").checked) {
+    const r = +$("accrate").value;
+    await pmdCp.writeValueWithResponse(new Uint8Array([0x02, 0x02, 0x00, 0x01, r & 255, r >> 8, 0x01, 0x01, 0x10, 0x00, 0x02, 0x01, 0x04, 0x00]));
+    await wait(400);
+  }
+  if ($("useecg").checked) {
+    await pmdCp.writeValueWithResponse(new Uint8Array([0x02, 0x00, 0x00, 0x01, 0x82, 0x00, 0x01, 0x01, 0x0E, 0x00]));
+    await wait(400);
+  }
+  pmdOn = true;
+}
+setInterval(() => {
+  if (!hrWanted || !pmdOn) return;
+  const age = pmdLast ? Math.round((Date.now() - pmdLast) / 1000) : null;
+  pmdStatus((age !== null && age > 5 ? `Polar-Daten: keine seit ${age} s · ` : "Polar-Daten laufen · ") +
+    `${Math.round(accN)} Beschleunigungswerte` + (ecgN ? ` · ${ecgN} EKG-Werte` : ""));
+}, 2000);
+
+/* Atmung und Bewegung grob aus der Brustbewegung */
+function movAvg(a, w) { const o = new Array(a.length); let s = 0; for (let i = 0; i < a.length; i++) { s += a[i]; if (i >= w) s -= a[i - w]; o[i] = s / Math.min(i + 1, w); } return o; }
+setInterval(() => {
+  if (breathBuf.length < 300) { if (pmdOn) $("breath").textContent = "sammle Daten …"; return; }
+  const seg = breathBuf.slice(-600), dur = (seg[seg.length - 1][0] - seg[0][0]) / 1000;
+  let best = null;
+  for (let ax = 1; ax <= 3; ax++) {
+    const raw = seg.map(r => r[ax]), sm = movAvg(raw, 5), slow = movAvg(raw, 80);
+    const d = sm.map((v, i) => v - slow[i]).slice(80);
+    const m = d.reduce((a, b) => a + b, 0) / d.length, sd = Math.sqrt(d.reduce((a, b) => a + (b - m) ** 2, 0) / d.length);
+    if (!best || sd > best.sd) best = { d, sd };
+  }
+  const h = 0.3 * best.sd; let state = 0, cross = 0;
+  best.d.forEach(v => { if (state <= 0 && v > h) { state = 1; cross++; } else if (state >= 0 && v < -h) state = -1; });
+  const mins = (best.d.length * 0.1) / 60, rate = cross / mins;
+  const mag = seg.slice(-100).map(r => Math.hypot(r[1], r[2], r[3])), mm = mag.reduce((a, b) => a + b, 0) / mag.length;
+  const msd = Math.sqrt(mag.reduce((a, b) => a + (b - mm) ** 2, 0) / mag.length);
+  const mov = msd < 15 ? "ruhig" : msd < 60 ? "leichte Bewegung" : "starke Bewegung";
+  $("breath").textContent = (mov === "ruhig" ? `ca. ${rate.toFixed(1)} Atemzüge/min` : "bei Bewegung nicht schätzbar") + ` · ${mov} (grob, ${Math.round(dur)} s)`;
+}, 5000);
+
+async function hrAttach() {
+  const server = await hrDev.gatt.connect();
+  const svc = await server.getPrimaryService("heart_rate");
+  hrChar = await svc.getCharacteristic("heart_rate_measurement");
+  hrChar.removeEventListener("characteristicvaluechanged", onHr);
+  hrChar.addEventListener("characteristicvaluechanged", onHr);
+  await hrChar.startNotifications();
+  try { await pmdAttach(server); } catch (e) { pmdStatus("Polar-Daten nicht gestartet: " + (e.message || e)); }
+}
+$("hrconnect").addEventListener("click", async () => {
+  if (!navigator.bluetooth) { hrStatus("Bluetooth ist in diesem Browser nicht verfügbar. Bitte Chrome verwenden und Bluetooth einschalten."); return; }
+  try {
+    const dev = await navigator.bluetooth.requestDevice({ filters: [{ services: ["heart_rate"] }], optionalServices: [PMD_SVC] });
+    if (hrDev && hrDev !== dev) { try { hrDev.gatt.disconnect(); } catch (e) {} }
+    hrDev = dev;
+    if (hrDevListened !== dev) { hrDevListened = dev; dev.addEventListener("gattserverdisconnected", onGattLost); }
+    if (!hrRec) { hrRec = idstamp(new Date()); nBeats = 0; accN = 0; ecgN = 0; nLate = 0; lastBeat = null; burst = null; }
+    const wasWanted = hrWanted;
+    await hrAttach();
+    hrWanted = true; markRec(); keepAwake();
+    if (!wasWanted) addEntry({ typ: "Gurt", name: "Aufzeichnung gestartet: " + (hrDev.name || "Gurt"), start: Date.now(), session: hrRec });
+    else addEntry({ typ: "Gurt", name: "Von Hand neu verbunden", start: Date.now(), session: hrRec });
+    $("hrstop").disabled = false; $("hrconnect").textContent = "Neu verbinden";
+    $("useacc").disabled = $("useecg").disabled = $("accrate").disabled = true;
+    hrStatus("Verbunden mit " + (hrDev.name || "Gurt") + ". Warte auf Herzschläge …");
+  } catch (e) { hrStatus("Verbindung nicht möglich: " + (e && e.message ? e.message : e)); }
+});
+let reconnecting = false;
+async function onGattLost() {
+      if (!hrWanted || reconnecting) return;
+      reconnecting = true;
+      if (!hrWanted) return;
+      hrStatus("Verbindung verloren, verbinde neu …"); pmdOn = false;
+      addEntry({ typ: "Gurt", name: "Verbindung verloren", start: Date.now() });
+      for (let i = 0; i < 40 && hrWanted; i++) {
+        try { await hrAttach(); addEntry({ typ: "Gurt", name: "Wieder verbunden", start: Date.now() }); reconnecting = false; return; }
+        catch (e) { await new Promise(r => setTimeout(r, 3000)); }
+      }
+      reconnecting = false;
+      hrStatus("Neu verbinden fehlgeschlagen. Bitte erneut „Gurt verbinden“ tippen.");
+}
+$("hrstop").addEventListener("click", async () => {
+  hrWanted = false; pmdOn = false;
+  try { if (pmdCp) { await pmdCp.writeValueWithResponse(new Uint8Array([0x03, 0x02])); await pmdCp.writeValueWithResponse(new Uint8Array([0x03, 0x00])); } } catch (e) {}
+  try { await hrChar?.stopNotifications(); } catch (e) {}
+  try { hrDev?.gatt.disconnect(); } catch (e) {}
+  if (burst) finishBurst(lastArr);
+  addEntry({ typ: "Gurt", name: `Aufzeichnung beendet, ${nBeats} Herzschläge (davon ${nLate} nachgeliefert), ${Math.round(accN)} Beschleunigungswerte, ${ecgN} EKG-Werte`, start: Date.now(), session: hrRec });
+  hrStatus("Beendet. Bitte „Alles speichern“ tippen."); pmdStatus("");
+  hrRec = null; $("hrstop").disabled = true; $("hrconnect").textContent = "Gurt verbinden";
+  $("useacc").disabled = $("useecg").disabled = $("accrate").disabled = false;
+  flush();
+  if (tpDev) tpFetch();
+});
+
+/* ================= Klang: Mikrofon und eigene Musik ================= */
+let ctx = null, micStream = null, micOn = false, micRec = null, phones = false, trackers = [], ownTapped = false, loopT = null;
+function ensureCtx() { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state !== "running") ctx.resume().catch(() => {}); return ctx; }
+const NAMES = ["C", "Cis", "D", "Es", "E", "F", "Fis", "G", "As", "A", "B", "H"];
+const MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+function corr(a, b) {
+  const ma = a.reduce((s, v) => s + v, 0) / 12, mb = b.reduce((s, v) => s + v, 0) / 12;
+  let n = 0, da = 0, dbb = 0;
+  for (let i = 0; i < 12; i++) { n += (a[i] - ma) * (b[i] - mb); da += (a[i] - ma) ** 2; dbb += (b[i] - mb) ** 2; }
+  return n / Math.sqrt(da * dbb + 1e-12);
+}
+function pct(arr, p) { if (!arr.length) return null; const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; }
+const dB = p => 10 * Math.log10(p + 1e-20);
+
+class Tracker {
+  constructor(src, an, detect) {
+    this.src = src; this.an = an; this.detect = detect;
+    this.n = an.frequencyBinCount; this.fd = new Float32Array(this.n); this.td = new Float32Array(an.fftSize);
+    this.prev = new Float32Array(this.n); this.hz = ctx.sampleRate / an.fftSize;
+    this.pc = new Int8Array(this.n).fill(-1);
+    for (let k = 1; k < this.n; k++) { const f = k * this.hz; if (f >= 80 && f <= 5000) this.pc[k] = ((Math.round(12 * Math.log2(f / 440)) + 9) % 12 + 12) % 12; }
+    this.flux = []; this.fluxT = []; this.frames = []; this.chroma = new Float32Array(12); this.lastDb = -120; this.lastOn = 0;
+    this.evt = null; this.bgMin = null; this.loud = null; this.loudRun = 0; this.quietRun = 0; this.t0 = Date.now();
+    this.sec = null; this.agg = null; this.bg = null; this.last = null;
+  }
+  step(now) {
+    if (this.lastT && now - this.lastT > 1500) this.gap(now);
+    const an = this.an, fd = this.fd, td = this.td;
+    an.getFloatTimeDomainData(td); an.getFloatFrequencyData(fd);
+    let e = 0; for (let i = 0; i < td.length; i++) e += td[i] * td[i];
+    const lev = dB(e / td.length);
+    let B = 0, M = 0, H = 0, sp = 0, sfp = 0, lg = 0, cnt = 0, fl = 0, pk = 0, pkf = 0; const ch = new Float32Array(12);
+    for (let k = 1; k < this.n; k++) {
+      const f = k * this.hz; if (f > 8000) break;
+      const p = Math.pow(10, fd[k] / 10), mag = Math.sqrt(p);
+      if (f < 250) B += p; else if (f < 2000) M += p; else H += p;
+      if (f >= 60) { sp += p; sfp += f * p; lg += Math.log(p + 1e-20); cnt++; }
+      if (f >= 100 && f <= 5000 && p > pk) { pk = p; pkf = f; }
+      const d = mag - this.prev[k]; if (d > 0) fl += d; this.prev[k] = mag;
+      if (this.pc[k] >= 0) ch[this.pc[k]] += mag;
+    }
+    const flat = cnt ? Math.exp(lg / cnt) / (sp / cnt + 1e-20) : 0, cen = sp ? sfp / sp : 0;
+    this.flux.push(fl); this.fluxT.push(now); if (lev > -150) this.frames.push([now, lev]);
+    while (this.frames.length && now - this.frames[0][0] > 30000) this.frames.shift();
+    while (this.flux.length > 400) { this.flux.shift(); this.fluxT.shift(); }
+    // Einsatz (Onset)
+    const L = this.flux.length; let onset = false;
+    if (L > 40) {
+      const recent = this.flux.slice(-120), thr = 1.5 * pct(recent, 0.5) + 1e-9, a = this.flux[L - 3], b = this.flux[L - 2], c = this.flux[L - 1];
+      if (b > thr && b > a && b >= c && now - this.lastOn > 100 && lev > -70) { onset = true; this.lastOn = now; }
+    }
+    // Tonart-Gedächtnis (ca. 15 s)
+    if (lev > -75 && this.bg !== null && lev > this.bg + 6) { const s = ch.reduce((x, y) => x + y, 0) + 1e-12; for (let i = 0; i < 12; i++) this.chroma[i] = this.chroma[i] * 0.9983 + ch[i] / s; }
+    // Sekunde sammeln
+    const sec = Math.floor(now / 1000);
+    if (this.sec !== null && sec !== this.sec) this.closeSecond();
+    if (this.sec !== sec) { this.sec = sec; this.agg = { n: 0, e: 0, max: -200, B: 0, M: 0, H: 0, cen: 0, flat: 0, on: 0, levs: [] }; }
+    const g = this.agg; g.n++; g.e += e / td.length; g.max = Math.max(g.max, lev); g.B += B; g.M += M; g.H += H; g.cen += cen; g.flat += flat; if (onset) g.on++; g.levs.push(lev);
+    // Plötzliche Geräusche
+    if (this.detect && this.bg !== null && now - this.t0 > 10000) {
+      if (!this.evt && lev > this.bg + 12) this.evt = { t: now, max: lev, rise: lev - this.lastDb, flat: 0, cen: 0, pkf: 0, n: 0, below: 0, bg: this.bg };
+      if (this.evt) {
+        const v = this.evt; v.n++; v.max = Math.max(v.max, lev); v.flat += flat; v.cen += cen; if (lev >= v.max) v.pkf = pkf;
+        v.below = lev < v.bg + 6 ? v.below + 1 : 0;
+        if (v.below >= 3 || now - v.t > 10000) this.endEvent(now);
+      }
+    }
+    if (this.lastT) this.dtF = 0.95 * (this.dtF || 0.025) + 0.05 * (now - this.lastT) / 1000;
+    this.lastT = now; this.lastDb = lev;
+  }
+  endEvent(now) {
+    const v = this.evt; this.evt = null;
+    const dur = Math.max(0.025, (now - v.t) / 1000 - v.below * (this.dtF || 0.025)), flat = v.flat / v.n, cen = v.cen / v.n;
+    let cls = "Sonstiges";
+    const inMusic = this.last && this.last.cls === "Musik";
+    if (inMusic && dur < 0.5) cls = "Musik-Einsatz";
+    else if (v.rise > 20 && dur < 1.0) cls = v.pkf < 800 && cen < 1300 ? "Klopfen" : cen > 2500 ? "Klatschen/Schnipsen" : "Knall";
+    else if (dur < 0.35 && v.rise > 12 && flat > 0.2) cls = "Knall";
+    else if (this.last && this.last.cls === "Sprache" && v.max - v.bg < 30) cls = "Sprache-Einsatz";
+    else if (dur >= 0.3 && flat < 0.12 && v.pkf >= 250 && v.pkf <= 3500) cls = "Hupe/Ton";
+    else if (dur >= 0.2 && dur <= 3 && cen >= 300 && cen <= 3000) cls = "Ruf/Stimme";
+    const r = { t: v.t, s: micRec, src: this.src, dur, max: v.max, bg: v.bg, ueber: v.max - v.bg, rise: v.rise, flat, cen, pkf: v.pkf, cls, ph: phones };
+    put("evt", r);
+    if (cls === "Musik-Einsatz" || cls === "Sprache-Einsatz") return;
+    $("evt").textContent = `${stamp(new Date(v.t)).slice(0, 8)} ${cls}, ${(v.max - v.bg).toFixed(0)} dB über Hintergrund, ${dur.toFixed(1)} s`;
+  }
+  closeSecond() {
+    const g = this.agg; if (!g || !g.n) return;
+    const lev = dB(g.e / g.n), m = g.levs.reduce((a, b) => a + b, 0) / g.n, sd = Math.sqrt(g.levs.reduce((a, b) => a + (b - m) ** 2, 0) / g.n);
+    const now = this.sec * 1000;
+    this.bg = pct(this.frames.map(f => f[1]), 0.2);
+    // Tempo aus den letzten 8 s
+    let bpm = null, tstr = 0;
+    const fx = this.flux.slice(-320);
+    if (fx.length >= 240) {
+      const mu = fx.reduce((a, b) => a + b, 0) / fx.length, x = fx.map(v => v - mu);
+      const ft = this.fluxT.slice(-fx.length), dt = (ft[ft.length - 1] - ft[0]) / 1000 / (ft.length - 1), r0 = x.reduce((a, b) => a + b * b, 0) + 1e-12, ac = [];
+      const lo = Math.round(60 / 190 / dt), hi = Math.round(60 / 55 / dt);
+      for (let lag = lo - 1; lag <= hi + 1; lag++) { let s = 0; for (let i = lag; i < x.length; i++) s += x[i] * x[i - lag]; ac[lag] = s / r0; }
+      let bl = lo; for (let lag = lo; lag <= hi; lag++) if (ac[lag] > ac[bl]) bl = lag;
+      const a = ac[bl - 1], b = ac[bl], c = ac[bl + 1], den = a - 2 * b + c, off = den ? 0.5 * (a - c) / den : 0;
+      bpm = 60 / ((bl + Math.max(-0.5, Math.min(0.5, off))) * dt); tstr = b;
+    }
+    // Tonart
+    let key = "", kstr = 0;
+    const cs = this.chroma.reduce((a, b) => a + b, 0);
+    if (cs > 5) {
+      const c = Array.from(this.chroma);
+      for (let i = 0; i < 12; i++) {
+        const rot = c.slice(i).concat(c.slice(0, i)), rM = corr(rot, MAJ), rm = corr(rot, MIN);
+        if (rM > kstr) { kstr = rM; key = NAMES[i] + "-Dur"; }
+        if (rm > kstr) { kstr = rm; key = NAMES[i].toLowerCase() + "-Moll"; }
+      }
+    }
+    const flat = g.flat / g.n, cen = g.cen / g.n;
+    let cls = "gemischt";
+    if (lev < -65) cls = "Ruhe";
+    else if (flat < 0.3 && (tstr > 0.3 || (kstr > 0.75 && sd < 4))) cls = "Musik";
+    else if (sd > 5 && cen > 300 && cen < 3500 && flat < 0.35) cls = "Sprache";
+    else if (flat > 0.3) cls = "Rauschen/Lärm";
+    const r = { t: now, s: micRec || sessionId, src: this.src, lev, max: g.max, bg: this.bg, B: dB(g.B / g.n), M: dB(g.M / g.n), H: dB(g.H / g.n), cen, flat, on: g.on, bpm, tstr, key, kstr, cls, ph: phones };
+    put("snd", r); this.last = r;
+    if (this.detect) this.noise(now);
+  }
+  gap(now) {
+    const sec = Math.round((now - this.lastT) / 1000);
+    if (this.detect) addEntry({ typ: "Klang", name: `Klanglücke von ${sec} s (Seite angehalten)`, start: this.lastT, end: now });
+    this.flux = []; this.fluxT = []; this.agg = null; this.sec = null;
+    this.resetBg(now);
+  }
+  resetBg(now) {
+    this.frames = []; this.bg = null; this.bgMin = null; this.t0 = now; this.evt = null; this.loudRun = 0; this.quietRun = 0;
+    if (this.loud) { addEntry({ typ: "Dauerlärm", name: "Ende (Messung neu eingestellt)", start: this.loud.t, end: now }); this.loud = null; }
+  }
+  noise(now) {
+    if (this.bg === null || now - this.t0 < 30000) return;
+    this.bgMin = this.bgMin === null ? this.bg : Math.min(this.bgMin, this.bg);
+    if (!this.loud) {
+      const music = (running && !phones && !audio.paused && audio.volume > 0.05) || (this.last && this.last.cls === "Musik");
+      this.loudRun = (this.bg > this.bgMin + 10 && !music) ? this.loudRun + 1 : 0;
+      if (this.loudRun >= 30) { this.loud = { t: now - 30000, max: this.bg }; addEntry({ typ: "Dauerlärm", name: `Beginn, Hintergrund ${(this.bg - this.bgMin).toFixed(0)} dB über dem Ruhepegel`, start: this.loud.t }); }
+    } else {
+      this.loud.max = Math.max(this.loud.max, this.bg);
+      this.quietRun = this.bg < this.bgMin + 7 ? this.quietRun + 1 : 0;
+      if (this.quietRun >= 10) { addEntry({ typ: "Dauerlärm", name: `Ende, höchstens ${(this.loud.max - this.bgMin).toFixed(0)} dB über dem Ruhepegel`, start: this.loud.t, end: now - 10000 }); this.loud = null; this.quietRun = 0; this.loudRun = 0; }
+    }
+  }
+}
+function mkAnalyser() { const an = ctx.createAnalyser(); an.fftSize = 4096; an.smoothingTimeConstant = 0; return an; }
+function startLoop() {
+  if (loopT) return;
+  loopT = setInterval(() => { const now = Date.now(); trackers.forEach(t => { try { t.step(now); } catch (e) {} }); }, 25);
+}
+setInterval(() => {
+  const m = trackers.find(t => t.src === "Mikro") || trackers[0]; if (!m || !m.last) return;
+  const r = m.last, tag = trackers.length > 1 ? ` (${m.src})` : "";
+  $("lv").textContent = `${r.lev.toFixed(0)} dBFS · Hintergrund ${r.bg !== null ? r.bg.toFixed(0) : "–"} dBFS${tag}`;
+  $("bands").textContent = `${r.B.toFixed(0)} / ${r.M.toFixed(0)} / ${r.H.toFixed(0)} dB · Schwerpunkt ${Math.round(r.cen)} Hz`;
+  $("tempo").textContent = !r.bpm ? "sammle Daten …" : r.tstr >= 0.3 ? `ca. ${Math.round(r.bpm)} Schläge/min (Deutlichkeit ${r.tstr.toFixed(2)}) · ${r.on} Einsätze/s` : `kein deutlicher Takt · ${r.on} Einsätze/s`;
+  $("key").textContent = r.key && r.kstr >= 0.6 && r.cls !== "Ruhe" ? `${r.key} (Deutlichkeit ${r.kstr.toFixed(2)})` : "keine deutliche Tonart";
+  $("cls").textContent = r.cls;
+}, 1000);
+
+async function listMics() {
+  try {
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput");
+    const sel = $("micdev"), cur = sel.value;
+    sel.innerHTML = `<option value="">Standard</option>` + devs.filter(d => d.deviceId && d.deviceId !== "default").map(d => `<option value="${d.deviceId}">${d.label || "Mikrofon"}</option>`).join("");
+    sel.value = cur;
+  } catch (e) {}
+}
+navigator.mediaDevices?.addEventListener?.("devicechange", () => {
+  listMics();
+  if (micOn || running) addEntry({ typ: "Audiogerät", name: "Audiogeräte geändert (Kopfhörer verbunden oder getrennt?)", start: Date.now() });
+  trackers.forEach(t => { if (t.src === "Mikro") t.resetBg(Date.now()); });
+});
+$("micstart").addEventListener("click", async () => {
+  try {
+    ensureCtx();
+    const id = $("micdev").value;
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    const src = ctx.createMediaStreamSource(micStream), an = mkAnalyser(); src.connect(an);
+    if (!micRec) micRec = idstamp(new Date());
+    trackers = trackers.filter(t => t.src !== "Mikro"); trackers.push(new Tracker("Mikro", an, true));
+    micOn = true; markRec(); keepAwake(); startLoop(); listMics();
+    const lab = micStream.getAudioTracks()[0]?.label || "Mikrofon";
+    addEntry({ typ: "Mikrofon", name: "Klangaufzeichnung gestartet: " + lab + (phones ? " (Kopfhörer auf)" : ""), start: Date.now(), session: micRec });
+    $("micstart").disabled = true; $("micstop").disabled = false; $("micdev").disabled = true;
+  } catch (e) { $("cls").textContent = "Mikrofon nicht möglich: " + (e.message || e); }
+});
+$("micstop").addEventListener("click", () => {
+  micStream?.getTracks().forEach(t => t.stop()); micStream = null;
+  trackers = trackers.filter(t => t.src !== "Mikro"); micOn = false;
+  addEntry({ typ: "Mikrofon", name: "Klangaufzeichnung beendet", start: Date.now(), session: micRec });
+  micRec = null; $("micstart").disabled = false; $("micstop").disabled = true; $("micdev").disabled = false; flush();
+});
+$("phones").addEventListener("click", () => {
+  phones = !phones; $("phones").classList.toggle("on", phones); $("phones").textContent = "Kopfhörer: " + (phones ? "auf" : "ab");
+  addEntry({ typ: "Kopfhörer", name: phones ? "auf" : "ab", start: Date.now() });
+});
+function tapOwn() {
+  if (ownTapped) return;
+  try {
+    ensureCtx();
+    const src = ctx.createMediaElementSource(audio), an = mkAnalyser();
+    src.connect(ctx.destination); src.connect(an);
+    trackers.push(new Tracker("Player", an, false)); ownTapped = true; startLoop();
+    addEntry({ typ: "Klang", name: "Eigene Musik wird mit ausgewertet", start: Date.now() });
+  } catch (e) { addEntry({ typ: "Fehler", name: "Eigene Musik nicht auswertbar: " + (e.message || e), start: Date.now() }); }
+}
+
+/* ================= Nachbefragung und Taste ================= */
+function lastMusicSession() { for (let i = log.length - 1; i >= 0; i--) if (log[i].typ === "Stück") return log[i].session; return null; }
+function renderReview() {
+  const sid = lastMusicSession();
+  const pieces = log.filter(r => r.session === sid && r.typ === "Stück" && (r.rep || 1) === 1);
+  if (!sid || !pieces.length) { $("review").style.display = "none"; return; }
+  const chosen = {};
+  log.filter(r => r.session === sid && r.typ === "Erleben").forEach(r => { chosen[r.ref] = r.feel; });
+  $("reviewlist").innerHTML = pieces.map(p => {
+    const ref = p.block + "-" + p.pos;
+    return `<div class="rv"><b>${stamp(new Date(p.start)).slice(0, 5)} · ${p.name.replace(/ 1\/\d+/, "")}</b><br>` +
+      FEEL.map(f => `<button data-ref="${ref}" data-f="${f}" class="${chosen[ref] === f ? "on" : ""}">${f}</button>`).join("") + `</div>`;
+  }).join("");
+  $("review").style.display = "block";
+}
+$("reviewlist").addEventListener("click", e => {
+  const ref = e.target.dataset.ref, f = e.target.dataset.f; if (!ref) return;
+  const sid = lastMusicSession();
+  const p = log.find(r => r.session === sid && r.typ === "Stück" && (r.block + "-" + r.pos) === ref);
+  addEntry({ typ: "Erleben", ref, feel: f, block: p.block, pos: p.pos, name: f + " (" + p.name + ")", start: p.start, end: p.end, session: sid });
+  renderReview();
+});
+function marker(label) { addEntry({ typ: "Marker", block: current ? current.block : "", name: label + (current ? " während " + current.name : ""), start: Date.now() }); }
+try {
+  navigator.mediaSession.setActionHandler("pause", () => { marker("Marker (Taste)"); setTimeout(tryPlay, 50); });
+  navigator.mediaSession.setActionHandler("play", () => tryPlay());
+  navigator.mediaSession.setActionHandler("nexttrack", () => marker("Marker (Taste vor)"));
+  navigator.mediaSession.setActionHandler("previoustrack", () => marker("Marker (Taste zurück)"));
+} catch (e) {}
+
+/* ================= Schwarzsperre ================= */
+let lastTap = 0, qTimer = null;
+function blackOn() {
+  $("blackout").style.display = "block"; $("unlockq").style.display = "none"; $("blackout").appendChild($("bvis"));
+  keepAwake();
+  try { document.documentElement.requestFullscreen?.(); } catch (e) {}
+  addEntry({ typ: "Bildschirm", name: "Schwarzsperre an", start: Date.now() });
+}
+function blackOff() {
+  $("guard").style.display = "block"; setTimeout(() => { $("guard").style.display = "none"; }, 1200);
+  $("blackout").style.display = "none"; $("unlockq").style.display = "none"; $("bhome").appendChild($("bvis"));
+  try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+  addEntry({ typ: "Bildschirm", name: "Schwarzsperre aus", start: Date.now() });
+}
+$("blackbtn").addEventListener("click", blackOn);
+$("blackout").addEventListener("pointerdown", e => {
+  e.preventDefault(); e.stopPropagation();
+  if (e.target.closest("#unlockq")) return;
+  const now = Date.now();
+  if (now - lastTap < 450) {
+    $("unlockq").style.display = "block";
+    clearTimeout(qTimer); qTimer = setTimeout(() => { $("unlockq").style.display = "none"; }, 6000);
+    lastTap = 0;
+  } else lastTap = now;
+});
+["click", "dblclick", "contextmenu", "touchstart", "touchmove", "wheel"].forEach(ev =>
+  $("blackout").addEventListener(ev, e => { if (!e.target.closest("#unlockq")) { e.preventDefault(); e.stopPropagation(); } }, { passive: false }));
+$("unlockyes").addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); clearTimeout(qTimer); blackOff(); });
+$("unlockno").addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); clearTimeout(qTimer); $("unlockq").style.display = "none"; });
+["pointerdown", "pointerup", "click", "touchstart", "touchend"].forEach(ev => $("guard").addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }, { passive: false }));
+
+/* ================= Fußsensor Polar Verity Sense ================= */
+let vDev = null, vCp = null, vData = null, vWanted = false, vRec = null, vLast = 0, vN = 0, vFactor = 0.000244141, vFrameSeen = false, vResp = null, vReconn = false, vListened = null;
+function vStatus(t) { $("vstatus").textContent = t; }
+/* Delta-Format nach dem Polar BLE SDK: Referenzwert mit 16 bit je Achse, dann Blöcke aus Bitbreite, Anzahl und bitweise gepackten Differenzen */
+function vDelta(b) {
+  const i16 = o => { const x = b[o] | (b[o + 1] << 8); return x & 0x8000 ? x - 0x10000 : x; };
+  let last = [i16(0), i16(2), i16(4)], o = 6; const out = [...last];
+  while (o + 2 <= b.length) {
+    const size = b[o++], cnt = b[o++], len = Math.ceil(cnt * size * 3 / 8);
+    if (o + len > b.length) break;
+    let bit = 0;
+    for (let k = 0; k < cnt; k++) {
+      const next = [0, 0, 0];
+      for (let c = 0; c < 3; c++) {
+        let val = 0;
+        for (let i = 0; i < size; i++, bit++) if (b[o + (bit >> 3)] & (1 << (bit & 7))) val += Math.pow(2, i);
+        if (size > 0 && val >= Math.pow(2, size - 1)) val -= Math.pow(2, size);
+        next[c] = last[c] + val;
+      }
+      last = next; out.push(...next);
+    }
+    o += len;
+  }
+  return out;
+}
+function onVData(ev) {
+  const v = ev.target.value, now = Date.now();
+  if (v.byteLength < 12 || v.getUint8(0) !== 2) return;
+  const tsUs = Number(v.getBigUint64(1, true) / 1000n), ft = v.getUint8(9), body = new Uint8Array(v.buffer, v.byteOffset + 10, v.byteLength - 10);
+  let raw;
+  if (ft & 0x80) { raw = vDelta(body); raw = raw.map(x => Math.round(x * vFactor * 1000)); }
+  else if (ft === 1) { raw = []; for (let o = 10; o + 5 < v.byteLength; o += 6) raw.push(v.getInt16(o, true), v.getInt16(o + 2, true), v.getInt16(o + 4, true)); }
+  else { if (!vFrameSeen) { vFrameSeen = true; addEntry({ typ: "Fußsensor", name: "Unbekanntes Datenformat " + ft + ": " + hexOf(v).slice(0, 80), start: now }); } return; }
+  if (!vFrameSeen) { vFrameSeen = true; const m = Math.round(Math.hypot(raw[0], raw[1], raw[2])); addEntry({ typ: "Fußsensor", name: `Erste Daten, Format ${ft}, ${raw.length / 3} Werte im Paket, Betrag ${m} mg, Faktor ${vFactor}`, start: now, session: vRec }); }
+  put("foot", { t: now, us: tsUs, r: 52, s: vRec, v: raw }); vN += raw.length / 3; vLast = now;
+}
+function onVCp(ev) {
+  const v = ev.target.value;
+  if (v.getUint8(0) !== 0xF0 || v.byteLength < 4) return;
+  if (v.getUint8(1) === 2 && v.getUint8(2) === 2) {
+    const status = v.getUint8(3);
+    if (status === 0) { /* Parameter ab Byte 5, Faktor ist Typ 5 mit 4 Byte */
+      const size = { 0: 2, 1: 2, 2: 2, 3: 4, 4: 1, 5: 4 };
+      for (let o = 5; o + 2 <= v.byteLength;) {
+        const t = v.getUint8(o), c = v.getUint8(o + 1), w = size[t]; if (!w || o + 2 + c * w > v.byteLength) break;
+        if (t === 5 && c >= 1) { const f = v.getFloat32(o + 2, true); if (f > 0 && f < 1) vFactor = f; }
+        o += 2 + c * w;
+      }
+    }
+    if (vResp) { const r = vResp; vResp = null; r(status); }
+  }
+}
+function vSend(bytes) {
+  return new Promise((res) => {
+    const to = setTimeout(() => { vResp = null; res(-1); }, 4000);
+    vResp = st => { clearTimeout(to); res(st); };
+    vCp.writeValueWithResponse(new Uint8Array(bytes)).catch(() => { clearTimeout(to); vResp = null; res(-2); });
+  });
+}
+async function vAttach() {
+  const server = await vDev.gatt.connect(), svc = await server.getPrimaryService(PMD_SVC);
+  vCp = await svc.getCharacteristic(PMD_CP); vData = await svc.getCharacteristic(PMD_DATA);
+  vCp.removeEventListener("characteristicvaluechanged", onVCp); vCp.addEventListener("characteristicvaluechanged", onVCp);
+  vData.removeEventListener("characteristicvaluechanged", onVData); vData.addEventListener("characteristicvaluechanged", onVData);
+  await vCp.startNotifications(); await vData.startNotifications();
+  const full = [0x02, 0x02, 0x00, 0x01, 0x34, 0x00, 0x01, 0x01, 0x10, 0x00, 0x02, 0x01, 0x08, 0x00, 0x04, 0x01, 0x03];
+  let st = await vSend(full);
+  if (st === 6) { await vSend([0x03, 0x02]); await wait(300); st = await vSend(full); }
+  if (st !== 0) { const st2 = await vSend(full.slice(0, 14)); if (st2 === 0) st = 0; else if (st2 !== -1) st = st2; }
+  if (st !== 0) throw new Error("Start abgelehnt, Code " + st);
+  addEntry({ typ: "Fußsensor", name: "Beschleunigung gestartet", start: Date.now(), session: vRec });
+}
+async function onVLost() {
+  if (!vWanted || vReconn) return;
+  vReconn = true; vStatus("Verbindung verloren, verbinde neu …");
+  addEntry({ typ: "Fußsensor", name: "Verbindung verloren", start: Date.now(), session: vRec });
+  for (let i = 0; i < 40 && vWanted; i++) {
+    try { await vAttach(); addEntry({ typ: "Fußsensor", name: "Wieder verbunden", start: Date.now(), session: vRec }); vReconn = false; return; }
+    catch (e) { await wait(3000); }
+  }
+  vReconn = false; vStatus("Neu verbinden fehlgeschlagen. Bitte „Fußsensor verbinden“ tippen.");
+}
+$("vconnect").addEventListener("click", async () => {
+  if (!navigator.bluetooth) { vStatus("Bluetooth ist in diesem Browser nicht verfügbar."); return; }
+  try {
+    const dev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "Polar Sense" }], optionalServices: [PMD_SVC] });
+    if (vDev && vDev !== dev) { try { vDev.gatt.disconnect(); } catch (e) {} }
+    vDev = dev;
+    if (vListened !== dev) { vListened = dev; dev.addEventListener("gattserverdisconnected", onVLost); }
+    if (!vRec) { vRec = idstamp(new Date()); vN = 0; vFrameSeen = false; }
+    vStatus("Verbinde …");
+    await vAttach();
+    if (!vWanted) addEntry({ typ: "Fußsensor", name: "Aufzeichnung gestartet: " + (dev.name || "Verity Sense"), start: Date.now(), session: vRec });
+    vWanted = true; markRec(); keepAwake();
+    $("vstop").disabled = false; $("vconnect").textContent = "Neu verbinden";
+    vStatus("Verbunden mit " + (dev.name || "Verity Sense") + ". Warte auf Daten …");
+  } catch (e) {
+    vStatus("Verbindung nicht möglich: " + (e && e.message ? e.message : e));
+    addEntry({ typ: "Fußsensor", name: "Verbindung nicht möglich: " + (e && e.message ? e.message : e), start: Date.now(), session: vRec || "" });
+  }
+});
+$("vstop").addEventListener("click", async () => {
+  vWanted = false;
+  try { await vSend([0x03, 0x02]); } catch (e) {}
+  try { vDev?.gatt.disconnect(); } catch (e) {}
+  addEntry({ typ: "Fußsensor", name: `Aufzeichnung beendet, ${Math.round(vN)} Werte`, start: Date.now(), session: vRec });
+  vStatus("Beendet. Bitte „Alles speichern“ tippen."); vRec = null;
+  $("vstop").disabled = true; $("vconnect").textContent = "Fußsensor verbinden"; wlShow(); flush();
+});
+setInterval(() => {
+  if (!vWanted || !vLast) return;
+  const age = Math.round((Date.now() - vLast) / 1000);
+  vStatus((age > 5 ? `Keine Daten seit ${age} s · ` : "Fußsensor läuft · ") + `${Math.round(vN)} Werte`);
+}, 2000);
+
+/* ================= Atemhilfe ================= */
+const BP = ["Einatmen", "Pause", "Ausatmen", "Pause 2"];
+const BMARK = [[[620, 900], 1], [[1050], 0.45], [[900, 620], 1], [[420], 0.45]];
+let breath = null, bOpt = false, bTon = false, bGain = null, bRaf = null, bFade = 1;
+function bApplyGain() { if (bGain) bGain.gain.value = Math.pow($("bvol").value / 100, 2) * bFade; }
+const bNodes = new Set();
+function bTimes() {
+  const T = [0, 1, 2, 3].map(i => parseFloat(String($("b" + i).value).replace(",", ".")));
+  if (T.some(v => !Number.isFinite(v) || v < 0 || v > 60) || T[0] < 0.5 || T[2] < 0.5) { $("bstatus").textContent = "Bitte Zeiten prüfen: Einatmen und Ausatmen mindestens 0,5 s, höchstens 60 s, Pausen ab 0 s."; return null; }
+  $("bstatus").textContent = ""; return T.map(v => Math.round(v * 1000));
+}
+function bMode() { return bOpt && bTon ? "Optik und Töne" : bOpt ? "Optik" : "Töne"; }
+function bLogState(prefix) { const T = breath.T.map(v => num(v / 1000)); addEntry({ typ: "Atemhilfe", name: `${prefix}: ${bMode()}, Einatmen ${T[0]} s, Pause ${T[1]} s, Ausatmen ${T[2]} s, Pause 2 ${T[3]} s`, start: Date.now() }); flush(); }
+function bOutput() {
+  ensureCtx();
+  if (!bGain) { bGain = ctx.createGain(); bGain.connect(ctx.destination); }
+  bApplyGain();
+}
+function bTone(f, at, dur, level) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = "triangle"; o.frequency.value = f;
+  g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(level, at + 0.012);
+  g.gain.setValueAtTime(level, at + dur - 0.04); g.gain.linearRampToValueAtTime(0, at + dur);
+  o.connect(g); g.connect(bGain); o.start(at); o.stop(at + dur + 0.02);
+  bNodes.add(o); o.onended = () => { bNodes.delete(o); g.disconnect(); };
+}
+function bMark(ev) {
+  const at = ctx.currentTime + (ev.t - Date.now()) / 1000;
+  if (at < ctx.currentTime + 0.02) return;
+  const [fs, level] = BMARK[ev.i];
+  fs.forEach((f, k) => bTone(f, at + k * 0.19, 0.14, level));
+}
+function bCancel() { bNodes.forEach(o => { try { o.stop(); } catch (e) {} }); bNodes.clear(); }
+function bFill() {
+  const b = breath, end = Date.now() + 70000;
+  while (b.cur.t < end) {
+    const i = b.cur.i;
+    if (b.T[i] > 0) { const ev = { t: b.cur.t, i, d: b.T[i] }; b.ev.push(ev); if (bTon && ctx) bMark(ev); }
+    b.cur = { t: b.cur.t + b.T[i], i: (i + 1) % 4 };
+  }
+}
+function bBegin(T) {
+  const t0 = Date.now() + 700;
+  breath = { T, t0, total: T.reduce((a, c) => a + c, 0), cur: { t: t0, i: 0 }, ev: [], off: null };
+  if (bTon) { bOutput(); breath.off = Date.now() / 1000 - ctx.currentTime; }
+  bFill();
+}
+function bRemark() { const now = Date.now(); bCancel(); if (bTon) { bOutput(); breath.off = now / 1000 - ctx.currentTime; breath.ev.filter(e => e.t > now).forEach(bMark); } }
+function bShow() {
+  $("bvis").style.display = bOpt ? "block" : "none";
+  $("bopt").classList.toggle("on", bOpt); $("bopt").textContent = "Optik: " + (bOpt ? "an" : "aus");
+  $("bton").classList.toggle("on", bTon); $("bton").textContent = "Töne: " + (bTon ? "an" : "aus");
+  if (bOpt && !bRaf) bRaf = requestAnimationFrame(bDraw);
+}
+function bToggle(kind) {
+  const wasOff = !breath, T = wasOff ? bTimes() : null;
+  if (wasOff && !T) return;
+  bWrite();
+  if (kind === "t" && !sleep) bFade = 1;
+  if (kind === "o") bOpt = !bOpt; else bTon = !bTon;
+  if (!bOpt && !bTon) { bCancel(); bWrite(); breath = null; addEntry({ typ: "Atemhilfe", name: "aus", start: Date.now() }); flush(); $("bstatus").textContent = ""; }
+  else if (wasOff) { bBegin(T); bLogState("an"); keepAwake(); }
+  else { if (kind === "t") bRemark(); bLogState("geändert"); }
+  bShow(); wlShow();
+}
+$("bopt").addEventListener("click", () => bToggle("o"));
+$("bton").addEventListener("click", () => bToggle("t"));
+$("bvol").addEventListener("input", bApplyGain);
+$("bvol").addEventListener("change", () => { if (breath && bTon) addEntry({ typ: "Atemhilfe", name: `Lautstärke Töne ${$("bvol").value} %`, start: Date.now() }); });
+[0, 1, 2, 3].forEach(i => $("b" + i).addEventListener("change", () => {
+  if (!breath) { bTimes(); return; }
+  const T = bTimes(); if (!T) return;
+  bCancel(); bWrite(); bBegin(T); bLogState("Zeiten geändert");
+}));
+function bWrite() {
+  const b = breath, now = Date.now(); if (!b) return;
+  while (b.ev.length && b.ev[0].t <= now) { const e = b.ev.shift(); put("atem", { t: e.t, p: BP[e.i], d: e.d, o: bOpt, n: bTon, s: sessionId || hrRec || micRec || "" }); }
+}
+setInterval(() => {
+  if (!breath) return;
+  bWrite(); bFill();
+  if (bTon && ctx) {
+    if (ctx.state !== "running") ctx.resume().catch(() => {});
+    const off = Date.now() / 1000 - ctx.currentTime;
+    if (breath.off === null || Math.abs(off - breath.off) > 0.25) bRemark();
+  }
+}, 1000);
+function bDraw() {
+  if (!breath || !bOpt) { bRaf = null; return; }
+  const b = breath, el = Date.now() - b.t0, ease = f => 0.5 - 0.5 * Math.cos(Math.PI * f);
+  let sc = 0.45, txt = "gleich geht es los";
+  if (el >= 0) {
+    let x = el % b.total;
+    for (let i = 0; i < 4; i++) {
+      if (x < b.T[i]) {
+        const f = x / b.T[i];
+        sc = i === 0 ? 0.45 + 0.55 * ease(f) : i === 1 ? 1 : i === 2 ? 1 - 0.55 * ease(f) : 0.45;
+        txt = `${BP[i]} ${Math.ceil((b.T[i] - x) / 1000)}`;
+        break;
+      }
+      x -= b.T[i];
+    }
+  }
+  $("bcirc").style.transform = `scale(${sc})`; $("btxt").textContent = txt;
+  bRaf = requestAnimationFrame(bDraw);
+}
+
+/* ================= Raumtemperatur ThermoPro TP357 ================= */
+const TP_SVC = "00010203-0405-0607-0809-0a0b0c0d1910", TP_READ = "00010203-0405-0607-0809-0a0b0c0d2b10", TP_WRITE = "00010203-0405-0607-0809-0a0b0c0d2b11";
+let tpDev = null, tpBusy = false;
+function tpStatus(t) { $("tpstatus").textContent = t; }
+const hexOf = v => Array.from(new Uint8Array(v.buffer, v.byteOffset, v.byteLength)).map(x => x.toString(16).padStart(2, "0")).join(" ");
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function tpConnect() {
+  let last = null;
+  for (let i = 1; i <= 3; i++) {
+    tpStatus(`Verbinde mit dem Thermometer, Versuch ${i} von 3 …`);
+    try {
+      const server = await Promise.race([tpDev.gatt.connect(), wait(20000).then(() => { throw new Error("Zeitgrenze beim Verbinden"); })]);
+      const svc = await server.getPrimaryService(TP_SVC);
+      return svc;
+    } catch (e) {
+      last = e; try { tpDev.gatt.disconnect(); } catch (x) {}
+      if (i < 3) await wait(2000);
+    }
+  }
+  throw last;
+}
+async function tpFetch() {
+  if (tpBusy || !tpDev) return;
+  tpBusy = true; $("tpget").disabled = true;
+  addEntry({ typ: "Temperatur", name: "Abruf begonnen: " + (tpDev.name || "Thermometer"), start: Date.now() }); flush();
+  let rd = null, h = null; const types = {}, firsts = []; let nPack = 0, nInvalid = 0, nShort = 0;
+  const report = (extra) => {
+    const t = Object.keys(types).map(k => `${k}: ${types[k]}`).join(", ") || "keine";
+    addEntry({ typ: "Temperatur", name: `Rohdaten: ${nPack} Pakete (${t}), ${nInvalid} Platzhalter, ${nShort} zu kurz${extra ? ", " + extra : ""}. Erste Pakete: ${firsts.join(" | ") || "keine"}`, start: Date.now() });
+  };
+  try {
+    const svc = await tpConnect();
+    rd = await svc.getCharacteristic(TP_READ);
+    const wr = await svc.getCharacteristic(TP_WRITE), vals = [];
+    tpStatus("Lese den Verlauf …");
+    const t0 = Math.round(Date.now() / 60000) * 60000 - 1439 * 60000;
+    await new Promise((res, rej) => {
+      const to = setTimeout(() => rej(new Error("keine Antwort vom Thermometer")), 45000);
+      let late = null;
+      const done = () => { clearTimeout(to); clearTimeout(late); res(); };
+      h = e => {
+        const v = e.target.value, c = v.getUint8(0), key = c.toString(16).toUpperCase().padStart(2, "0");
+        nPack++; types[key] = (types[key] || 0) + 1;
+        if (firsts.length < 4) firsts.push(hexOf(v));
+        if (c === 0xC2) { if (vals.length) done(); else { clearTimeout(late); late = setTimeout(done, 8000); } return; }
+        if (c !== 0xA7) return;
+        if (v.byteLength < 19) { nShort++; return; }
+        const raw = v.getInt16(1, true);
+        for (let i = 0; i < 5; i++) {
+          const o = 4 + 3 * i, t10 = v.getInt16(o, true), rh = v.getUint8(o + 2);
+          if (t10 > 1024 || rh > 100) { nInvalid++; continue; }
+          vals.push({ t: t0 + (5 * (raw - 1) + i) * 60000, c: t10 / 10, h: rh });
+        }
+      };
+      rd.addEventListener("characteristicvaluechanged", h);
+      rd.startNotifications().then(() => wr.writeValueWithoutResponse(new Uint8Array([0xA7, 0, 0, 0, 0, 0x7A]))).catch(e => { clearTimeout(to); rej(e); });
+    });
+    report();
+    vals.forEach(r => put("temp", r));
+    if (!vals.length) throw new Error("das Thermometer lieferte keine Werte");
+    const last = vals.reduce((a, b) => (b.t > a.t ? b : a));
+    addEntry({ typ: "Temperatur", name: `Verlauf abgeholt, ${vals.length} Werte, zuletzt ${num(last.c)} °C und ${last.h} % Luftfeuchte`, start: Date.now() });
+    tpStatus(`Abgeholt: ${vals.length} Minutenwerte, zuletzt ${num(last.c)} °C und ${last.h} % Luftfeuchte.`);
+    await flush();
+  } catch (e) {
+    if (!nPack && !String(e && e.message).includes("lieferte")) report("Fehler");
+    tpStatus("Abholen nicht möglich: " + (e && e.message ? e.message : e) + `. Empfangen: ${nPack} Pakete. ThermoPro-App schließen, Thermometer in die Nähe legen und nochmal tippen.`);
+    addEntry({ typ: "Temperatur", name: "Abholen fehlgeschlagen: " + (e && e.message ? e.message : e), start: Date.now() });
+    flush();
+  }
+  try { if (rd && h) rd.removeEventListener("characteristicvaluechanged", h); } catch (e) {}
+  try { tpDev.gatt.disconnect(); } catch (e) {}
+  tpBusy = false; $("tpget").disabled = false;
+}
+$("tpget").addEventListener("click", async () => {
+  if (!navigator.bluetooth) { tpStatus("Bluetooth ist in diesem Browser nicht verfügbar."); return; }
+  if (!tpDev) {
+    try { tpDev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "TP357" }], optionalServices: [TP_SVC] }); }
+    catch (e) { tpStatus("Kein Thermometer gewählt."); return; }
+  }
+  tpFetch();
+});
+
+/* ================= Export als ZIP ================= */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const f of files) {
+    const name = enc.encode(f.name), data = enc.encode("﻿" + f.text), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, time, true); h.setUint16(12, date, true); h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true);
+    h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h.buffer, name, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true);
+    c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    central.push(c.buffer, name);
+    off += 30 + name.length + data.length;
+  }
+  const csize = central.reduce((s, x) => s + (x.byteLength ?? x.length), 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, e.buffer], { type: "application/zip" });
+}
+function tcols(ms) { const d = new Date(ms); return [dstamp(d), stamp(d), Math.round(ms)]; }
+async function buildZip() {
+  $("savestatus").textContent = "Stelle Daten zusammen …";
+  await flush();
+  const [L, BT, SN, EV, AC, EC, SY, AT, TP, FT] = await Promise.all(["log", "beat", "snd", "evt", "acc", "ecg", "sync", "atem", "temp", "foot"].map(readKind));
+  const files = [];
+  // Messdaten.csv im bisherigen Format (Protokoll plus Herzschläge), damit die alten Auswertungen weiter passen
+  const m = ["Sitzung;Typ;Block;Position;Bezeichnung;Datum;Start;Ende;Dauer_s;RR_ms;Ankunft"];
+  L.forEach(r => { const st = new Date(r.start), e = r.end ? new Date(r.end) : null;
+    m.push([r.session ?? "", r.typ, r.block ?? "", r.pos ?? "", r.name, dstamp(st), stamp(st), e ? stamp(e) : "", e ? num((e - st) / 1000) : "", "", ""].join(";")); });
+  BT.forEach(b => { const st = new Date(b[0]); m.push([b[2] ?? "", "Herzschlag", "", "", "", dstamp(st), stamp(st), "", "", b[1], b[3] ? stamp(new Date(b[3])) : ""].join(";")); });
+  files.push({ name: "Messdaten.csv", text: m.join("\n") });
+  if (SN.length) {
+    const s = ["Sitzung;Quelle;Datum;Zeit;Epoch_ms;Pegel_dBFS;Spitze_dBFS;Hintergrund_dBFS;Bass_dB;Mitte_dB;Hoehe_dB;Schwerpunkt_Hz;Flachheit;Einsaetze;Tempo_bpm;Tempo_Deutlichkeit;Tonart;Tonart_Deutlichkeit;Art_grob;Kopfhoerer"];
+    SN.forEach(r => s.push([r.s ?? "", r.src, ...tcols(r.t), num(r.lev), num(r.max), num(r.bg), num(r.B), num(r.M), num(r.H), Math.round(r.cen), num(r.flat, 3), r.on, num(r.bpm), num(r.tstr, 2), r.key, num(r.kstr, 2), r.cls, r.ph ? "auf" : "ab"].join(";")));
+    files.push({ name: "Klang_pro_Sekunde.csv", text: s.join("\n") });
+  }
+  if (EV.length) {
+    const s = ["Sitzung;Quelle;Datum;Zeit;Epoch_ms;Dauer_s;Spitze_dBFS;Hintergrund_dBFS;Ueber_Hintergrund_dB;Anstieg_dB;Flachheit;Schwerpunkt_Hz;Hauptfrequenz_Hz;Art_grob;Kopfhoerer"];
+    EV.forEach(r => s.push([r.s ?? "", r.src, ...tcols(r.t), num(r.dur, 2), num(r.max), num(r.bg), num(r.ueber), num(r.rise), num(r.flat, 3), Math.round(r.cen), Math.round(r.pkf), r.cls, r.ph ? "auf" : "ab"].join(";")));
+    files.push({ name: "Schallereignisse.csv", text: s.join("\n") });
+  }
+  // Sensorzeit -> Uhrzeit: kleinste Verzögerung je Sitzung (live empfangene Pakete)
+  const offs = {};
+  [["a", AC], ["e", EC], ["f", FT]].forEach(([kind, arr]) => arr.forEach(c => { const o = c.t - c.us / 1000; const k = kind + (c.s ?? ""); if (offs[k] === undefined || o < offs[k]) offs[k] = o; }));
+  /* Tatsächlicher Abstand der Werte aus den Zeitstempeln aufeinanderfolgender Pakete statt der Nennrate */
+  const realDt = (arr, i, n, nominal) => {
+    const p = i > 0 ? arr[i - 1] : null; if (!p || p.s !== arr[i].s || n <= 0) return nominal;
+    const d = (arr[i].us - p.us) / 1000 / n;
+    return d > nominal * 0.75 && d < nominal * 1.25 ? d : nominal;
+  };
+  if (AC.length) {
+    const s = ["Sitzung;Datum;Zeit;Epoch_ms;Sensor_us;x_mg;y_mg;z_mg"];
+    AC.forEach((c, idx) => { const n = c.v.length / 3, dt = realDt(AC, idx, n, 1000 / c.r);
+      const base = c.us / 1000 + offs["a" + (c.s ?? "")];
+      for (let i = 0; i < n; i++) { const off = (n - 1 - i) * dt; s.push([c.s ?? "", ...tcols(base - off), Math.round(c.us - off * 1000), c.v[3 * i], c.v[3 * i + 1], c.v[3 * i + 2]].join(";")); } });
+    files.push({ name: "Beschleunigung.csv", text: s.join("\n") });
+  }
+  if (EC.length) {
+    const s = ["Sitzung;Epoch_ms;Sensor_us;EKG_uV"];
+    EC.forEach((c, idx) => { const n = c.v.length, dt = realDt(EC, idx, n, 1000 / c.r);
+      const base = c.us / 1000 + offs["e" + (c.s ?? "")];
+      for (let i = 0; i < n; i++) { const off = (n - 1 - i) * dt; s.push([c.s ?? "", Math.round(base - off), Math.round(c.us - off * 1000), c.v[i]].join(";")); } });
+    files.push({ name: "EKG.csv", text: s.join("\n") });
+  }
+  if (FT.length) {
+    const s = ["Sitzung;Datum;Zeit;Epoch_ms;Sensor_us;x_mg;y_mg;z_mg"];
+    FT.forEach((c, idx) => { const n = c.v.length / 3, dt = realDt(FT, idx, n, 1000 / c.r);
+      const base = c.us / 1000 + offs["f" + (c.s ?? "")];
+      for (let i = 0; i < n; i++) { const off = (n - 1 - i) * dt; s.push([c.s ?? "", ...tcols(base - off), Math.round(c.us - off * 1000), c.v[3 * i], c.v[3 * i + 1], c.v[3 * i + 2]].join(";")); } });
+    files.push({ name: "Fuss_Beschleunigung.csv", text: s.join("\n") });
+  }
+  if (SY.length) {
+    const s = ["Sitzung;Block;Position;Durchgang;Stueck;Datum;Zeit;Epoch_ms;Abspielposition_s;Verzoegerung_ms"];
+    SY.forEach(r => s.push([r.s ?? "", r.b ?? "", r.p ?? "", r.r ?? "", r.n, ...tcols(r.t), num(r.c, 3), r.d].join(";")));
+    files.push({ name: "Musikposition.csv", text: s.join("\n") });
+  }
+  if (AT.length) {
+    const s = ["Sitzung;Phase;Datum;Zeit;Epoch_ms;Dauer_s;Optik;Toene"];
+    AT.forEach(r => s.push([r.s ?? "", r.p, ...tcols(r.t), num(r.d / 1000), r.o ? "an" : "aus", r.n ? "an" : "aus"].join(";")));
+    files.push({ name: "Atemhilfe.csv", text: s.join("\n") });
+  }
+  if (TP.length) {
+    const byMin = new Map(); TP.forEach(r => byMin.set(r.t, r));
+    const s = ["Datum;Zeit;Epoch_ms;Temperatur_C;Luftfeuchte_Prozent"];
+    [...byMin.values()].sort((a, b) => a.t - b.t).forEach(r => s.push([...tcols(r.t), num(r.c), r.h].join(";")));
+    files.push({ name: "Temperatur.csv", text: s.join("\n") });
+  }
+  const blob = makeZip(files);
+  return { blob, name: "Messdaten5_" + idstamp(new Date()) + ".zip", list: files.map(f => f.name).join(", ") };
+}
+$("saveall").addEventListener("click", async () => {
+  const z = await buildZip(), a = document.createElement("a");
+  a.href = URL.createObjectURL(z.blob); a.download = z.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  $("savestatus").textContent = `Gespeichert: ${z.list} (${(z.blob.size / 1e6).toFixed(1)} MB). Die Datei liegt in den Downloads.`;
+});
+let shareFile = null;
+async function doShare() {
+  try {
+    await navigator.share({ files: [shareFile], title: shareFile.name, text: "Messdaten Biodanza Messplayer" });
+    $("savestatus").textContent = "Geteilt: " + shareFile.name;
+    $("sharenow").style.display = "none"; addEntry({ typ: "Daten", name: "ZIP geteilt: " + shareFile.name, start: Date.now() });
+  } catch (e) {
+    if (e.name === "AbortError") { $("savestatus").textContent = "Teilen abgebrochen."; return; }
+    if (e.name === "NotAllowedError") { $("sharenow").style.display = "inline-block"; $("savestatus").textContent = "Die Datei ist fertig. Bitte auf „Jetzt teilen“ tippen."; return; }
+    $("savestatus").textContent = "Teilen nicht möglich (" + (e.message || e.name) + "). Bitte „Alles speichern“ benutzen.";
+  }
+}
+$("shareall").addEventListener("click", async () => {
+  const z = await buildZip();
+  shareFile = new File([z.blob], z.name, { type: "application/zip" });
+  if (!navigator.canShare || !navigator.canShare({ files: [shareFile] })) {
+    $("savestatus").textContent = "Dieser Browser kann keine Dateien teilen. Bitte „Alles speichern“ benutzen."; return;
+  }
+  doShare();
+});
+$("sharenow").addEventListener("click", doShare);
+$("clear").addEventListener("click", async () => {
+  if ($("clearok").value.trim().toLowerCase() !== "ok") { $("clearstatus").textContent = "Nicht gelöscht. Zum Löschen erst „ok“ in das Feld schreiben."; return; }
+  $("clearok").value = ""; $("clearstatus").textContent = "Gelöscht.";
+  queue = [];
+  await new Promise(res => { const tx = db.transaction("rec", "readwrite"); tx.objectStore("rec").clear(); tx.oncomplete = res; tx.onerror = res; });
+  log = []; Object.keys(counts).forEach(k => counts[k] = 0);
+  $("log").querySelector("tbody").innerHTML = ""; renderReview(); memStatus();
+  $("savestatus").textContent = "Gelöscht.";
+});
+
+/* ================= Start der Seite ================= */
+(async () => {
+  try { await navigator.storage?.persist?.(); } catch (e) {}
+  try {
+    db = await openDb();
+    log = await readKind("log"); log.slice(-300).forEach(row);
+    for (const k of Object.keys(counts)) counts[k] = await countKind(k);
+  } catch (e) { $("mem").textContent = "Gerätespeicher nicht verfügbar: " + (e.message || e); }
+  memStatus(); showOrder(); renderReview(); listMics();
+})();
+</script>
+</body>
+</html>
