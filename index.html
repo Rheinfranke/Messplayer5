@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Biodanza Messplayer 6</title>
+<title>Biodanza Messplayer 8</title>
 <style>
   body { font-family: system-ui, sans-serif; max-width: 680px; margin: 1.5rem auto; padding: 0 1rem; color: #222; background: #fafaf7; line-height: 1.5; }
   h1 { font-size: 1.4rem; font-weight: 500; margin-bottom: 0.2rem; }
@@ -15,6 +15,7 @@
   select { font-size: 1rem; padding: 0.2rem; max-width: 100%; }
   button { font-size: 1rem; padding: 0.55rem 1rem; border-radius: 8px; border: 1px solid #888; background: #fff; cursor: pointer; margin: 0.25rem 0.25rem 0.25rem 0; }
   button.main { background: #2d6a4f; color: #fff; border-color: #2d6a4f; }
+  button.main.stop { background: #b3261e; border-color: #b3261e; }
   button.act { background: #eef4f0; border-color: #9bb8a6; }
   button.act.on, button.tog.on { background: #2d6a4f; color: #fff; border-color: #2d6a4f; }
   button:disabled { opacity: 0.4; cursor: default; }
@@ -47,9 +48,11 @@
 </style>
 </head>
 <body>
-<h1>Biodanza Messplayer 6</h1>
+<h1>Biodanza Messplayer 8</h1>
 <div class="hint">Herz, Atmung, Bewegung, Klangumgebung und Musik mit derselben Uhr. Gurt, Mikrofon und Musik laufen unabhängig voneinander.</div>
 
+<button class="main" id="master" disabled>Noch keine Aufzeichnung aktiv</button>
+<div id="crash" class="hint" style="display:none;color:#b00020"></div>
 <div id="bar"><span id="wl">Bildschirm: nicht nötig</span> · <span id="dur">keine Aufzeichnung</span> · <span id="mem">Speicher …</span></div>
 
 <fieldset>
@@ -65,10 +68,13 @@
 </fieldset>
 
 <fieldset>
-  <legend>Fußsensor (Polar Verity Sense)</legend>
-  <div class="hint">Über dem Knöchel tragen, immer gleich herum. Einschalten und auf blaues Licht stellen (Sensormodus). Polar-App vorher schließen. Am Anfang und Ende dreimal fest aufstampfen.</div>
-  <button class="main" id="vconnect">Fußsensor verbinden</button>
-  <button id="vstop" disabled>Fußsensor beenden</button>
+  <legend>Polar Verity Sense</legend>
+  <div class="hint">Einmal kurz drücken und loslassen, nicht halten (Halten schaltet aus). Er startet von selbst mit blauem Licht an der Seite. Warten, bis alle sechs Lämpchen geleuchtet haben, dann verbinden. Polar-App vorher schließen. Am Fuß misst er Bewegung und Drehrate, rechts außen über dem Knöchel. Am Oberarm zusätzlich die Pulswelle, Licht zur Haut, fest anliegend, immer dieselbe Stelle.<br><b>Abgleich:</b> Am Anfang und am Ende den Sense neben den H10 auf den Gurt halten und dreimal mit dem Knöchel auf beide klopfen, etwa im Abstand einer halben Sekunde. Davor und danach zwei Sekunden still halten.</div>
+  <label>Trageort: <select id="vplace"><option value="Fuß">Fuß</option><option value="Arm">Oberarm</option></select></label>
+  <label>Rate Bewegung: <select id="vrate"><option value="52">52 Hz (Standard)</option><option value="104">104 Hz</option><option value="208">208 Hz (für die Nacht, genauer Beginn der Zuckung)</option></select></label>
+  <label><input type="checkbox" id="usegyro" checked> Am Fuß zusätzlich die Drehrate (Gyroskop) aufzeichnen</label>
+  <button class="main" id="vconnect">Sense verbinden</button>
+  <button id="vstop" disabled>Sense beenden</button>
   <div id="vstatus" class="stat"></div>
 </fieldset>
 
@@ -106,6 +112,18 @@
   <label><input type="checkbox" id="silence"> Stille als sechstes „Stück“ einmischen (3 Minuten, als Vergleich ohne Musik)</label>
   <div id="order" class="hint"></div>
   <label><input type="checkbox" id="keepon" checked> Unhörbaren Wachhalte-Ton abspielen (hält die Seite bei gesperrtem Bildschirm wach)</label>
+  <label><input type="checkbox" id="bigdata" checked> BigData: zusätzlich alle Rohdaten speichern wie bisher (sonst nur Excel und JSON)</label>
+  <label><input type="checkbox" id="nacht"> Nachtmodus: Ereignisse (Zuckungen, Umdrehen) und Fenster in voller Auflösung, dazu Vergleichsfenster alle 10 Minuten</label>
+  <div class="hint">Für die Nacht: Nachtmodus an, BigData aus, Sense am Fuß mit 208 Hz, Thermometer alle 10 Minuten. Abends vor dem Hinlegen und morgens nach dem Aufwachen den Sense neben den Gurt halten und klopfen.</div>
+  <div class="hint">Tasten am Sperrbildschirm und Kopfhörer: Halt setzt einen Marker. Vor schaltet die Musik aus und an. Zurück schaltet die Atemhilfe (Töne) aus und an. Jedes Umschalten wird angesagt.</div>
+</fieldset>
+
+<fieldset>
+  <legend>Testablauf Gehen</legend>
+  <label><input type="checkbox" id="testab"> Testablauf aktiv</label>
+  <div class="hint">Ab dem Einschalten gilt alles als Anweg. Am Testort Vor drücken: 2 Minuten ohne Musik, dann startet die Musik (Durchgang 1, der Block aus den Einstellungen). Danach Durchgang 2 mit Atemhilfe, dann 2 Minuten Auslaufen und die Ansage „Ende des Tests“. Der Rückweg gilt als Abweg.</div>
+  <button id="teststart">Testablauf jetzt starten (wie Taste Vor)</button>
+  <div id="teststatus" class="stat"></div>
 </fieldset>
 
 <fieldset>
@@ -120,11 +138,12 @@
 
 <fieldset>
   <legend>Atemhilfe</legend>
-  <div class="hint">Zeiten in Sekunden. Eine Pause auf 0 entfällt samt ihrem Ton. Optik und Töne schalten sich getrennt ein und aus.</div>
-  <label>Einatmen: <input type="number" id="b0" min="0.5" max="60" step="0.5" value="4"></label>
-  <label>Pause: <input type="number" id="b1" min="0" max="60" step="0.5" value="0"></label>
-  <label>Ausatmen: <input type="number" id="b2" min="0.5" max="60" step="0.5" value="6"></label>
-  <label>Pause 2: <input type="number" id="b3" min="0" max="60" step="0.5" value="0"></label>
+  <div class="hint">Zeiten in Sekunden, auf Zehntel genau. Eine Pause auf 0 entfällt samt ihrem Ton. Optik und Töne schalten sich getrennt ein und aus.</div>
+  <label>Einatmen: <input type="number" id="b0" min="0.5" max="60" step="0.1" value="4"></label>
+  <label>Pause: <input type="number" id="b1" min="0" max="60" step="0.1" value="0"></label>
+  <label>Ausatmen: <input type="number" id="b2" min="0.5" max="60" step="0.1" value="6"></label>
+  <label>Pause 2: <input type="number" id="b3" min="0" max="60" step="0.1" value="0"></label>
+  <label>Zeiten: <select id="bmode"><option value="fest">fest wie eingestellt</option><option value="angepasst">angepasst an die Atemdauer davor (aus dem Puls)</option></select></label>
   <button class="tog" id="bopt">Optik: aus</button><button class="tog" id="bton">Töne: aus</button>
   <label>Lautstärke Töne: <input type="range" id="bvol" min="0" max="100" value="60"></label>
   <div class="hint">In der Einschlaffunktion werden die Töne mit der Musik leiser und sind am Ende aus. Einatmen: zwei Töne aufwärts. Pause: ein hoher leiser Ton. Ausatmen: zwei Töne abwärts. Pause 2: ein tiefer leiser Ton. Die Optik erscheint auch in der Schwarzsperre.</div>
@@ -202,7 +221,7 @@ const num = (x, d = 1) => (x === null || x === undefined || !Number.isFinite(x))
 const hms = s => `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(Math.floor(s % 60))}`;
 
 /* ================= Speicher (IndexedDB, nur anhängen) ================= */
-let db = null, queue = [], counts = { log: 0, beat: 0, acc: 0, ecg: 0, snd: 0, evt: 0, sync: 0, atem: 0, temp: 0, foot: 0 };
+let db = null, queue = [], counts = { log: 0, beat: 0, acc: 0, ecg: 0, snd: 0, evt: 0, sync: 0, atem: 0, temp: 0, foot: 0, ppg: 0, vhr: 0, gyro: 0 };
 function openDb() {
   return new Promise((res, rej) => {
     const r = indexedDB.open("messplayer2", 1);
@@ -279,7 +298,7 @@ function toneWav(sec, amp) {
   for (let i = 0; i < n; i++) v.setInt16(44 + 2 * i, Math.round(amp * 32767 * Math.sin(2 * Math.PI * 25 * i / rate)), true);
   return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
 }
-const keep = new Audio(toneWav(4, 0.003)); keep.loop = true;
+const keep = new Audio(toneWav(8, 0.003)); keep.loop = true;
 let keepLogged = false;
 function keepTone() {
   if (!$("keepon").checked || !needAwake()) { if (!keep.paused) keep.pause(); return; }
@@ -431,7 +450,7 @@ function next() {
     current = { typ: "Stück", block: "Schlaf", pos: calmIdx, name: p.base || p.name, start: null, end: null, rep: 1, reps: 1 };
   } else {
     const order = orderOf(blockNo);
-    if (pos >= order.length) { blockNo++; pos = 0; return next(); }
+    if (pos >= order.length) { if (testBlockEnd()) return; blockNo++; pos = 0; return next(); }
     p = order[pos];
     current = { typ: "Stück", block: blockNo, pos: pos + 1, name: p.base || p.name, start: null, end: null, rep: 1, reps: p.reps || 1 };
   }
@@ -439,11 +458,11 @@ function next() {
   try { navigator.mediaSession.metadata = new MediaMetadata({ title: p.name, artist: `Block ${blockNo}, Position ${pos + 1}` }); } catch (e) {}
   $("now").textContent = passName();
 }
-setInterval(() => { if (running && current && audio.paused && !audio.ended) { openStall("Wiedergabe angehalten"); tryPlay(); } }, 3000);
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && running && current && audio.paused) tryPlay(); });
+setInterval(() => { if (running && current && audio.paused && !audio.ended && !mPause) { openStall("Wiedergabe angehalten"); tryPlay(); } }, 3000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && running && current && audio.paused && !mPause) tryPlay(); });
 audio.addEventListener("playing", () => { closeStall(); if (current) $("now").textContent = passName(); });
 audio.addEventListener("waiting", () => { if (running && current && current.start) openStall("Puffern"); });
-audio.addEventListener("pause", () => { if (running && current && current.start && !audio.ended && !(audio.duration && audio.currentTime >= audio.duration - 0.05)) openStall("Wiedergabe angehalten"); });
+audio.addEventListener("pause", () => { if (running && current && current.start && !mPause && !audio.ended && !(audio.duration && audio.currentTime >= audio.duration - 0.05)) openStall("Wiedergabe angehalten"); });
 audio.addEventListener("timeupdate", () => {
   if (!current || audio.paused) return;
   if (!current.start && audio.currentTime >= 0.25) markStart();
@@ -518,7 +537,7 @@ function endSleep(msg) {
 $("slstop").addEventListener("click", () => { endSleep("Einschlafen abgebrochen"); });
 function stopMusic(reason) {
   if (!running) return;
-  running = false; audio.pause();
+  running = false; mPause = null; audio.pause();
   if (current && current.start) finishPass(" (abgebrochen)");
   stall = null; current = null;
   addEntry({ typ: "Stopp", name: `Musik beendet, nächster Block wäre ${blockNo + (pos > 0 ? 1 : 0)}`, start: Date.now(), session: sessionId });
@@ -560,17 +579,18 @@ function liveBeats(rrs, now) {
   let t = (lastBeat !== null && Math.abs(lastBeat + sum - now) < 3000) ? lastBeat + sum : now;
   const fresh = [];
   for (let i = rrs.length - 1; i >= 0; i--) { fresh.unshift([t, Math.round(rrs[i]), hrRec, now]); t -= rrs[i]; }
-  fresh.forEach(b => put("beat", [Math.round(b[0]), b[1], b[2], b[3]])); nBeats += fresh.length; lastBeat = fresh[fresh.length - 1][0];
+  if (rrs.length) lastBpm = Math.round(60000 / rrs[rrs.length - 1]);
+  fresh.forEach(b => { put("beat", [Math.round(b[0]), b[1], b[2], b[3]]); memBeat(b[0], b[1]); }); nBeats += fresh.length; lastBeat = fresh[fresh.length - 1][0];
 }
 function finishBurst(endT) {
   const b = burst; burst = null; if (!b) return;
-  if (b.n < 3) { let t = endT; const out = []; for (let i = b.rr.length - 1; i >= 0; i--) { out.unshift(t); t -= b.rr[i]; } b.rr.forEach((r, i) => put("beat", [Math.round(out[i]), Math.round(r), hrRec, Date.now()])); nBeats += b.rr.length; lastBeat = Math.round(endT); return; }
+  if (b.n < 3) { let t = endT; const out = []; for (let i = b.rr.length - 1; i >= 0; i--) { out.unshift(t); t -= b.rr[i]; } b.rr.forEach((r, i) => { put("beat", [Math.round(out[i]), Math.round(r), hrRec, Date.now()]); memBeat(out[i], r); }); nBeats += b.rr.length; lastBeat = Math.round(endT); return; }
   const total = b.rr.reduce((a, c) => a + c, 0), elapsed = endT - b.from, now = Date.now();
   let times = [];
   if (Math.abs(elapsed - total) < 3000) { let t = b.from; b.rr.forEach(r => { t += r; times.push(t); }); }
   else { let t = endT; for (let i = b.rr.length - 1; i >= 0; i--) { times.unshift(t); t -= b.rr[i]; }
     if (elapsed - total > 3000) addEntry({ typ: "Gurt", name: `Herzschläge fehlen für ca. ${Math.round((elapsed - total) / 1000)} s vor dem Nachliefern (EKG prüfen)`, start: b.from, end: Math.round(endT - total) }); }
-  b.rr.forEach((r, i) => put("beat", [Math.round(times[i]), Math.round(r), hrRec, now]));
+  b.rr.forEach((r, i) => { put("beat", [Math.round(times[i]), Math.round(r), hrRec, now]); memBeat(times[i], r); });
   nBeats += b.rr.length; nLate += b.rr.length; lastBeat = Math.round(times[times.length - 1]);
   addEntry({ typ: "Gurt", name: `${b.rr.length} Herzschläge nachgeliefert und zurückgerechnet`, start: b.from, end: Math.round(endT) });
 }
@@ -595,7 +615,7 @@ function onPmd(ev) {
     else if (ft === 1) for (let o = 10; o + 5 < v.byteLength; o += 6) out.push(v.getInt16(o, true), v.getInt16(o + 2, true), v.getInt16(o + 4, true));
     else if (ft === 2) for (let o = 10; o + 8 < v.byteLength; o += 9) out.push(i24(v, o), i24(v, o + 3), i24(v, o + 6));
     else { if (!pmdWarned["a" + ft]) { pmdWarned["a" + ft] = 1; addEntry({ typ: "Gurt", name: "Unbekanntes ACC-Format " + ft, start: now }); } return; }
-    put("acc", { t: now, us: tsUs, r: rate, s: hrRec, v: out }); accN += out.length / 3;
+    put("acc", { t: now, us: tsUs, r: rate, s: hrRec, v: out }); accN += out.length / 3; tapFeed("c", now, out, 1000 / rate); memAccPush(now, out, 1000 / rate);
     const n = out.length / 3, dt = 1000 / rate;
     for (let i = 0; i < n; i++) {
       const ti = now - (n - 1 - i) * dt;
@@ -681,7 +701,8 @@ async function hrAttach() {
 $("hrconnect").addEventListener("click", async () => {
   if (!navigator.bluetooth) { hrStatus("Bluetooth ist in diesem Browser nicht verfügbar. Bitte Chrome verwenden und Bluetooth einschalten."); return; }
   try {
-    const dev = await navigator.bluetooth.requestDevice({ filters: [{ services: ["heart_rate"] }], optionalServices: [PMD_SVC] });
+    /* nur Brustgurte anbieten, damit nicht versehentlich der Sense als Gurt verbunden wird */
+    const dev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "Polar H" }], optionalServices: ["heart_rate", PMD_SVC] });
     if (hrDev && hrDev !== dev) { try { hrDev.gatt.disconnect(); } catch (e) {} }
     hrDev = dev;
     if (hrDevListened !== dev) { hrDevListened = dev; dev.addEventListener("gattserverdisconnected", onGattLost); }
@@ -960,10 +981,10 @@ $("reviewlist").addEventListener("click", e => {
 });
 function marker(label) { addEntry({ typ: "Marker", block: current ? current.block : "", name: label + (current ? " während " + current.name : ""), start: Date.now() }); }
 try {
-  navigator.mediaSession.setActionHandler("pause", () => { marker("Marker (Taste)"); setTimeout(tryPlay, 50); });
-  navigator.mediaSession.setActionHandler("play", () => tryPlay());
-  navigator.mediaSession.setActionHandler("nexttrack", () => marker("Marker (Taste vor)"));
-  navigator.mediaSession.setActionHandler("previoustrack", () => marker("Marker (Taste zurück)"));
+  navigator.mediaSession.setActionHandler("pause", () => { if (!anyActive()) { recStopped(); return; } marker("Marker (Taste)"); setTimeout(() => { if (running && !mPause) tryPlay(); else keepTone(); }, 50); });
+  navigator.mediaSession.setActionHandler("play", () => { if (!anyActive()) { recStopped(); return; } if (running && !mPause) tryPlay(); else keepTone(); });
+  navigator.mediaSession.setActionHandler("nexttrack", () => { if ($("testab").checked && !test) testStart(); else musicToggle(); });
+  navigator.mediaSession.setActionHandler("previoustrack", () => breathKey());
 } catch (e) {}
 
 /* ================= Schwarzsperre ================= */
@@ -998,19 +1019,21 @@ $("unlockno").addEventListener("click", e => { e.preventDefault(); e.stopPropaga
 ["pointerdown", "pointerup", "click", "touchstart", "touchend"].forEach(ev => $("guard").addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }, { passive: false }));
 
 /* ================= Fußsensor Polar Verity Sense ================= */
-let vDev = null, vCp = null, vData = null, vWanted = false, vRec = null, vLast = 0, vN = 0, vFactor = 0.000244141, vFrameSeen = false, vResp = null, vReconn = false, vListened = null;
+let vPlace = "Fuß", vP = 0, vPpgSeen = false, vHr = null, lastBpm = null, vDev = null, vCp = null, vData = null, vWanted = false, vRec = null, vLast = 0, vN = 0, vFactor = 0.000244141, vFrameSeen = false, vResp = null, vReconn = false, vListened = null, vG = 0, vGSeen = false, vGFactor = null, vRateNom = 52;
 function vStatus(t) { $("vstatus").textContent = t; }
 /* Delta-Format nach dem Polar BLE SDK: Referenzwert mit 16 bit je Achse, dann Blöcke aus Bitbreite, Anzahl und bitweise gepackten Differenzen */
-function vDelta(b) {
-  const i16 = o => { const x = b[o] | (b[o + 1] << 8); return x & 0x8000 ? x - 0x10000 : x; };
-  let last = [i16(0), i16(2), i16(4)], o = 6; const out = [...last];
+function vDelta(b, ch, bytes) {
+  const lim = Math.pow(2, 8 * bytes - 1), span = lim * 2;
+  const ref = o => { let x = 0; for (let k = 0; k < bytes; k++) x += b[o + k] * Math.pow(2, 8 * k); return x >= lim ? x - span : x; };
+  let last = []; for (let c = 0; c < ch; c++) last.push(ref(c * bytes));
+  let o = ch * bytes; const out = [...last];
   while (o + 2 <= b.length) {
-    const size = b[o++], cnt = b[o++], len = Math.ceil(cnt * size * 3 / 8);
+    const size = b[o++], cnt = b[o++], len = Math.ceil(cnt * size * ch / 8);
     if (o + len > b.length) break;
     let bit = 0;
     for (let k = 0; k < cnt; k++) {
-      const next = [0, 0, 0];
-      for (let c = 0; c < 3; c++) {
+      const next = new Array(ch).fill(0);
+      for (let c = 0; c < ch; c++) {
         let val = 0;
         for (let i = 0; i < size; i++, bit++) if (b[o + (bit >> 3)] & (1 << (bit & 7))) val += Math.pow(2, i);
         if (size > 0 && val >= Math.pow(2, size - 1)) val -= Math.pow(2, size);
@@ -1024,36 +1047,68 @@ function vDelta(b) {
 }
 function onVData(ev) {
   const v = ev.target.value, now = Date.now();
-  if (v.byteLength < 12 || v.getUint8(0) !== 2) return;
-  const tsUs = Number(v.getBigUint64(1, true) / 1000n), ft = v.getUint8(9), body = new Uint8Array(v.buffer, v.byteOffset + 10, v.byteLength - 10);
+  if (v.byteLength < 12) return;
+  const type = v.getUint8(0), tsUs = Number(v.getBigUint64(1, true) / 1000n), ft = v.getUint8(9), body = new Uint8Array(v.buffer, v.byteOffset + 10, v.byteLength - 10);
+  if (type === 1) { /* PPG: 3 Lichtkanäle und Umgebungslicht, 24 bit */
+    if (ft !== 0x80) { if (!vPpgSeen) { vPpgSeen = true; addEntry({ typ: "Sense", name: "Unbekanntes PPG-Format " + ft + ": " + hexOf(v).slice(0, 80), start: now, session: vRec }); } return; }
+    const raw = vDelta(body, 4, 3);
+    if (!vPpgSeen) { vPpgSeen = true; addEntry({ typ: "Sense", name: `Erste PPG-Daten, ${raw.length / 4} Werte im Paket, Kanal 0: ${raw[0]}, Umgebung: ${raw[3]}`, start: now, session: vRec }); }
+    put("ppg", { t: now, us: tsUs, r: 55, s: vRec, v: raw }); vP += raw.length / 4; vLast = now; return;
+  }
+  if (type === 5) { /* Drehrate, roh mit Faktor */
+    /* wie im Polar SDK: Typ 0x80 ganze Zahlen mal Faktor, Typ 0x81 Gleitkomma (32 bit) mal Faktor, ohne Faktor gilt 1 */
+    let g; const f = vGFactor || 1;
+    if (ft === 0x80) g = vDelta(body, 3, 2).map(x => Math.round(x * f * 100) / 100);
+    else if (ft === 0x81) { const dv = new DataView(new ArrayBuffer(4)); g = vDelta(body, 3, 4).map(x => { dv.setInt32(0, x, true); return Math.round(dv.getFloat32(0, true) * f * 100) / 100; }); }
+    else { if (!vGSeen) { vGSeen = true; addEntry({ typ: "Sense", name: "Unbekanntes Drehratenformat " + ft + ": " + hexOf(v).slice(0, 80), start: now, session: vRec }); } return; }
+    if (!vGSeen) { vGSeen = true; addEntry({ typ: "Sense", name: `Erste Drehraten, Format ${ft}, ${g.length / 3} Werte im Paket, Faktor ${vGFactor === null ? "keiner (1)" : vGFactor}, erster Wert ${g.slice(0, 3).join(" / ")} °/s. Roh: ${hexOf(v).slice(0, 60)}`, start: now, session: vRec }); }
+    put("gyro", { t: now, us: tsUs, r: 52, s: vRec, f: 1, fo: vGFactor, ft, v: g }); vG += g.length / 3; vLast = now; return;
+  }
+  if (type !== 2) return;
   let raw;
-  if (ft & 0x80) { raw = vDelta(body); raw = raw.map(x => Math.round(x * vFactor * 1000)); }
+  /* 0x81 kommt fertig in mg, 0x80 braucht den Faktor aus der Startantwort */
+  if (ft === 0x81) raw = vDelta(body, 3, 2);
+  else if (ft === 0x80) raw = vDelta(body, 3, 2).map(x => Math.round(x * vFactor * 1000));
   else if (ft === 1) { raw = []; for (let o = 10; o + 5 < v.byteLength; o += 6) raw.push(v.getInt16(o, true), v.getInt16(o + 2, true), v.getInt16(o + 4, true)); }
-  else { if (!vFrameSeen) { vFrameSeen = true; addEntry({ typ: "Fußsensor", name: "Unbekanntes Datenformat " + ft + ": " + hexOf(v).slice(0, 80), start: now }); } return; }
-  if (!vFrameSeen) { vFrameSeen = true; const m = Math.round(Math.hypot(raw[0], raw[1], raw[2])); addEntry({ typ: "Fußsensor", name: `Erste Daten, Format ${ft}, ${raw.length / 3} Werte im Paket, Betrag ${m} mg, Faktor ${vFactor}`, start: now, session: vRec }); }
-  put("foot", { t: now, us: tsUs, r: 52, s: vRec, v: raw }); vN += raw.length / 3; vLast = now;
+  else { if (!vFrameSeen) { vFrameSeen = true; addEntry({ typ: "Sense", name: "Unbekanntes Datenformat " + ft + ": " + hexOf(v).slice(0, 80), start: now, session: vRec }); } return; }
+  if (!vFrameSeen) { vFrameSeen = true; const m = Math.round(Math.hypot(raw[0], raw[1], raw[2])); addEntry({ typ: "Sense", name: `Erste Daten, Format ${ft}, ${raw.length / 3} Werte im Paket, Betrag ${m} mg`, start: now, session: vRec }); }
+  put("foot", { t: now, us: tsUs, r: Math.round(vRateNom * 55 / 52), s: vRec, w: vPlace, v: raw }); vN += raw.length / 3; vLast = now; tapFeed("f", now, raw, 52000 / (55 * vRateNom));
 }
 function onVCp(ev) {
   const v = ev.target.value;
   if (v.getUint8(0) !== 0xF0 || v.byteLength < 4) return;
-  if (v.getUint8(1) === 2 && v.getUint8(2) === 2) {
+  if (v.getUint8(1) === 1 || v.getUint8(1) === 3 || v.getUint8(1) === 4) {
+    const status = v.getUint8(3);
+    if ((v.getUint8(1) === 1 || v.getUint8(1) === 4) && status === 0) { vSet = {}; const size = { 0: 2, 1: 2, 2: 2, 3: 4, 4: 1, 5: 4 };
+      for (let o = 5; o + 2 <= v.byteLength;) { const t = v.getUint8(o), c = v.getUint8(o + 1), w = size[t]; if (!w || o + 2 + c * w > v.byteLength) break;
+        vSet[t] = []; for (let k = 0; k < c; k++) vSet[t].push(w === 1 ? v.getUint8(o + 2 + k) : w === 2 ? v.getUint16(o + 2 + 2 * k, true) : v.getFloat32(o + 2 + 4 * k, true)); o += 2 + c * w; } }
+    if (vResp) { const r = vResp; vResp = null; r(status); }
+    return;
+  }
+  if (v.getUint8(1) === 2) {
     const status = v.getUint8(3);
     if (status === 0) { /* Parameter ab Byte 5, Faktor ist Typ 5 mit 4 Byte */
       const size = { 0: 2, 1: 2, 2: 2, 3: 4, 4: 1, 5: 4 };
       for (let o = 5; o + 2 <= v.byteLength;) {
         const t = v.getUint8(o), c = v.getUint8(o + 1), w = size[t]; if (!w || o + 2 + c * w > v.byteLength) break;
-        if (t === 5 && c >= 1) { const f = v.getFloat32(o + 2, true); if (f > 0 && f < 1) vFactor = f; }
+        if (t === 5 && c >= 1) { const f = v.getFloat32(o + 2, true); if (f > 0 && f < 1) { if (v.getUint8(2) === 2) vFactor = f; else if (v.getUint8(2) === 5) vGFactor = f; } }
         o += 2 + c * w;
       }
     }
     if (vResp) { const r = vResp; vResp = null; r(status); }
   }
 }
-function vSend(bytes) {
+let vSet = null, vSdk = false;
+async function vGet(type) { vSet = null; const st = await vSend([vSdk ? 0x04 : 0x01, type]); return st === 0 ? vSet : null; }
+/* wartet auf Antwort und auf das Ende des Schreibens, damit der nächste Befehl nicht in ein laufendes Schreiben fällt; bei Belegt einmal neu */
+async function vSend(bytes) { let st = await vSend1(bytes); if (st === -2) { await wait(400); st = await vSend1(bytes); } return st; }
+function vSend1(bytes) {
   return new Promise((res) => {
-    const to = setTimeout(() => { vResp = null; res(-1); }, 4000);
-    vResp = st => { clearTimeout(to); res(st); };
-    vCp.writeValueWithResponse(new Uint8Array(bytes)).catch(() => { clearTimeout(to); vResp = null; res(-2); });
+    let got = null, wrote = false, done = false;
+    const fin = () => { if (!done && wrote && got !== null) { done = true; clearTimeout(to); res(got); } };
+    const to = setTimeout(() => { vResp = null; if (!done) { done = true; res(got ?? -1); } }, 4000);
+    vResp = st => { got = st; fin(); };
+    vCp.writeValueWithResponse(new Uint8Array(bytes)).then(() => { wrote = true; fin(); }).catch(() => { if (!done) { done = true; clearTimeout(to); vResp = null; res(-2); } });
   });
 }
 async function vAttach() {
@@ -1062,19 +1117,51 @@ async function vAttach() {
   vCp.removeEventListener("characteristicvaluechanged", onVCp); vCp.addEventListener("characteristicvaluechanged", onVCp);
   vData.removeEventListener("characteristicvaluechanged", onVData); vData.addEventListener("characteristicvaluechanged", onVData);
   await vCp.startNotifications(); await vData.startNotifications();
-  const full = [0x02, 0x02, 0x00, 0x01, 0x34, 0x00, 0x01, 0x01, 0x10, 0x00, 0x02, 0x01, 0x08, 0x00, 0x04, 0x01, 0x03];
+  vRateNom = 52;
+  if (vPlace === "Fuß") { const want = +$("vrate").value;
+    vSdk = false; if (want > 52) { const sd = await vSend([0x02, 0x09]); vSdk = sd === 0; addEntry({ typ: "Sense", name: vSdk ? "SDK-Modus an (für höhere Raten)" : "SDK-Modus nicht möglich, Code " + sd, start: Date.now(), session: vRec }); }
+    const st0 = await vGet(2); if (st0 && st0[0]) { addEntry({ typ: "Sense", name: `Sense kann Beschleunigung mit ${st0[0].join(", ")} Hz` + (st0[2] ? `, Bereich ${st0[2].join(", ")} g` : ""), start: Date.now(), session: vRec }); const ok = st0[0].filter(r => r <= want); vRateNom = ok.length ? Math.max(...ok) : 52; } else vRateNom = want; }
+  let full = [0x02, 0x02, 0x00, 0x01, vRateNom & 255, vRateNom >> 8, 0x01, 0x01, 0x10, 0x00, 0x02, 0x01, 0x08, 0x00, 0x04, 0x01, 0x03];
   let st = await vSend(full);
+  if (st !== 0 && vRateNom !== 52) { addEntry({ typ: "Sense", name: `Rate ${vRateNom} Hz abgelehnt (Code ${st}), nehme 52 Hz`, start: Date.now(), session: vRec }); vRateNom = 52; full = [0x02, 0x02, 0x00, 0x01, 0x34, 0x00, 0x01, 0x01, 0x10, 0x00, 0x02, 0x01, 0x08, 0x00, 0x04, 0x01, 0x03]; await vSend([0x03, 0x02]); await wait(300); st = await vSend(full); }
   if (st === 6) { await vSend([0x03, 0x02]); await wait(300); st = await vSend(full); }
   if (st !== 0) { const st2 = await vSend(full.slice(0, 14)); if (st2 === 0) st = 0; else if (st2 !== -1) st = st2; }
   if (st !== 0) throw new Error("Start abgelehnt, Code " + st);
-  addEntry({ typ: "Fußsensor", name: "Beschleunigung gestartet", start: Date.now(), session: vRec });
+  addEntry({ typ: "Sense", name: "Beschleunigung gestartet, Trageort " + vPlace + ", " + vRateNom + " Hz", start: Date.now(), session: vRec });
+  if (vPlace === "Fuß" && $("usegyro").checked) {
+    let ok = null, last = null; const gs = await vGet(5);
+    if (gs) addEntry({ typ: "Sense", name: `Sense kann Drehrate mit ${(gs[0] || []).join(", ")} Hz, Bereich ${(gs[2] || []).join(", ")} °/s`, start: Date.now(), session: vRec });
+    const gRate = gs && gs[0] && gs[0].length ? (gs[0].includes(52) ? 52 : Math.min(...gs[0])) : 52, gRanges = gs && gs[2] && gs[2].length ? [...gs[2]].sort((a, b) => b - a) : [2000, 1000, 500, 250];
+    await vSend([0x03, 0x05]);
+    for (const r of gRanges) {
+      const cmd = [0x02, 0x05, 0x00, 0x01, gRate & 255, gRate >> 8, 0x01, 0x01, 0x10, 0x00, 0x02, 0x01, r & 255, r >> 8, 0x04, 0x01, 0x03];
+      vGFactor = null;
+      let g = await vSend(cmd);
+      if (g === 6) { await vSend([0x03, 0x05]); await wait(300); g = await vSend(cmd); }
+      if (g !== 0) { const g2 = await vSend(cmd.slice(0, 14)); if (g2 === 0) g = 0; }
+      last = g; if (g === 0) { ok = r; break; }
+    }
+    addEntry({ typ: "Sense", name: ok ? `Drehrate gestartet, Bereich ${ok} °/s, Faktor ${vGFactor}` : "Drehrate abgelehnt, Code " + last, start: Date.now(), session: vRec });
+  }
+  if (vPlace === "Arm") {
+    const ppg = [0x02, 0x01, 0x00, 0x01, 0x37, 0x00, 0x01, 0x01, 0x16, 0x00, 0x04, 0x01, 0x04];
+    let p = await vSend(ppg);
+    if (p === 6) { await vSend([0x03, 0x01]); await wait(300); p = await vSend(ppg); }
+    addEntry({ typ: "Sense", name: p === 0 ? "PPG gestartet" : "PPG abgelehnt, Code " + p, start: Date.now(), session: vRec });
+    try {
+      const hs = await server.getPrimaryService("heart_rate"); vHr = await hs.getCharacteristic("heart_rate_measurement");
+      vHr.removeEventListener("characteristicvaluechanged", onVHr); vHr.addEventListener("characteristicvaluechanged", onVHr);
+      await vHr.startNotifications();
+    } catch (e) { addEntry({ typ: "Sense", name: "Puls des Sense nicht verfügbar: " + (e.message || e), start: Date.now(), session: vRec }); }
+  }
 }
+function onVHr(ev) { const v = ev.target.value, f = v.getUint8(0); put("vhr", { t: Date.now(), s: vRec, b: f & 1 ? v.getUint16(1, true) : v.getUint8(1) }); }
 async function onVLost() {
   if (!vWanted || vReconn) return;
   vReconn = true; vStatus("Verbindung verloren, verbinde neu …");
-  addEntry({ typ: "Fußsensor", name: "Verbindung verloren", start: Date.now(), session: vRec });
+  addEntry({ typ: "Sense", name: "Verbindung verloren", start: Date.now(), session: vRec });
   for (let i = 0; i < 40 && vWanted; i++) {
-    try { await vAttach(); addEntry({ typ: "Fußsensor", name: "Wieder verbunden", start: Date.now(), session: vRec }); vReconn = false; return; }
+    try { await vAttach(); addEntry({ typ: "Sense", name: "Wieder verbunden", start: Date.now(), session: vRec }); vReconn = false; return; }
     catch (e) { await wait(3000); }
   }
   vReconn = false; vStatus("Neu verbinden fehlgeschlagen. Bitte „Fußsensor verbinden“ tippen.");
@@ -1082,34 +1169,35 @@ async function onVLost() {
 $("vconnect").addEventListener("click", async () => {
   if (!navigator.bluetooth) { vStatus("Bluetooth ist in diesem Browser nicht verfügbar."); return; }
   try {
-    const dev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "Polar Sense" }], optionalServices: [PMD_SVC] });
+    const dev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "Polar Sense" }], optionalServices: [PMD_SVC, "heart_rate"] });
     if (vDev && vDev !== dev) { try { vDev.gatt.disconnect(); } catch (e) {} }
     vDev = dev;
     if (vListened !== dev) { vListened = dev; dev.addEventListener("gattserverdisconnected", onVLost); }
-    if (!vRec) { vRec = idstamp(new Date()); vN = 0; vFrameSeen = false; }
+    vPlace = $("vplace").value; $("vplace").disabled = true;
+    if (!vRec) { vRec = idstamp(new Date()); vN = 0; vP = 0; vG = 0; vFrameSeen = false; vPpgSeen = false; vGSeen = false; }
     vStatus("Verbinde …");
     await vAttach();
-    if (!vWanted) addEntry({ typ: "Fußsensor", name: "Aufzeichnung gestartet: " + (dev.name || "Verity Sense"), start: Date.now(), session: vRec });
+    if (!vWanted) addEntry({ typ: "Sense", name: "Aufzeichnung gestartet: " + (dev.name || "Verity Sense"), start: Date.now(), session: vRec });
     vWanted = true; markRec(); keepAwake();
     $("vstop").disabled = false; $("vconnect").textContent = "Neu verbinden";
     vStatus("Verbunden mit " + (dev.name || "Verity Sense") + ". Warte auf Daten …");
   } catch (e) {
     vStatus("Verbindung nicht möglich: " + (e && e.message ? e.message : e));
-    addEntry({ typ: "Fußsensor", name: "Verbindung nicht möglich: " + (e && e.message ? e.message : e), start: Date.now(), session: vRec || "" });
+    addEntry({ typ: "Sense", name: "Verbindung nicht möglich: " + (e && e.message ? e.message : e), start: Date.now(), session: vRec || "" });
   }
 });
 $("vstop").addEventListener("click", async () => {
   vWanted = false;
-  try { await vSend([0x03, 0x02]); } catch (e) {}
+  try { await vSend([0x03, 0x02]); if (vPlace === "Arm") await vSend([0x03, 0x01]); else await vSend([0x03, 0x05]); if (vSdk) { await vSend([0x03, 0x09]); vSdk = false; } } catch (e) {}
   try { vDev?.gatt.disconnect(); } catch (e) {}
-  addEntry({ typ: "Fußsensor", name: `Aufzeichnung beendet, ${Math.round(vN)} Werte`, start: Date.now(), session: vRec });
+  addEntry({ typ: "Sense", name: `Aufzeichnung beendet, ${Math.round(vN)} Werte` + (vG ? `, ${Math.round(vG)} Drehraten` : ""), start: Date.now(), session: vRec });
   vStatus("Beendet. Bitte „Alles speichern“ tippen."); vRec = null;
-  $("vstop").disabled = true; $("vconnect").textContent = "Fußsensor verbinden"; wlShow(); flush();
+  $("vstop").disabled = true; $("vconnect").textContent = "Sense verbinden"; $("vplace").disabled = false; wlShow(); flush();
 });
 setInterval(() => {
   if (!vWanted || !vLast) return;
   const age = Math.round((Date.now() - vLast) / 1000);
-  vStatus((age > 5 ? `Keine Daten seit ${age} s · ` : "Fußsensor läuft · ") + `${Math.round(vN)} Werte`);
+  vStatus((age > 5 ? `Keine Daten seit ${age} s · ` : `Sense läuft (${vPlace}) · `) + `${Math.round(vN)} Werte` + (vPlace === "Arm" ? `, ${Math.round(vP)} PPG` : vG ? `, ${Math.round(vG)} Drehraten` : ""));
 }, 2000);
 
 /* ================= Atemhilfe ================= */
@@ -1293,6 +1381,860 @@ $("tpget").addEventListener("click", async () => {
   tpFetch();
 });
 
+/* ================= Hauptknopf, Statusanzeige, Absturz ================= */
+function anyActive() { return running || hrWanted || vWanted || micOn || !!breath || !!test; }
+function knownDevices() { return !!(hrDev || vDev || tpDev); }
+let masterArm = 0, micWas = false;
+function masterShow() {
+  const b = $("master"), active = anyActive();
+  if (active) { b.disabled = false; b.className = "main stop"; b.textContent = Date.now() - masterArm < 4000 ? "Wirklich alles beenden? Nochmal tippen" : "Aufzeichnung läuft · Alles beenden"; }
+  else if (knownDevices()) { b.disabled = false; b.className = "main"; b.textContent = "Aufzeichnung aus · Alles wieder starten"; }
+  else { b.disabled = true; b.className = "main"; b.textContent = "Noch keine Aufzeichnung aktiv"; }
+}
+async function stopAll() {
+  micWas = micOn;
+  if (sleep) endSleep("Einschlafen abgebrochen (Hauptknopf)");
+  if (test) { addEntry({ typ: "Testabschnitt", name: "Testablauf beendet (Hauptknopf)", start: Date.now() }); test = null; testShow(); }
+  if (running) stopMusic();
+  if (bOpt) bToggle("o"); if (bTon) bToggle("t");
+  if (micOn) $("micstop").click();
+  if (hrWanted) $("hrstop").click();
+  if (vWanted) $("vstop").click();
+  addEntry({ typ: "Aufzeichnung", name: "Alles beendet (Hauptknopf)", start: Date.now() });
+  await flush(); keepTone(); wlShow();
+  if (!anyActive()) { recWasActive = false; recStopped(); }
+}
+async function startAll() {
+  addEntry({ typ: "Aufzeichnung", name: "Alles gestartet (Hauptknopf)", start: Date.now() });
+  if (hrDev) {
+    try {
+      hrRec = idstamp(new Date()); nBeats = 0; accN = 0; ecgN = 0; nLate = 0; lastBeat = null; burst = null;
+      await hrAttach(); hrWanted = true; markRec(); $("useacc").disabled = $("useecg").disabled = $("accrate").disabled = true;
+      addEntry({ typ: "Gurt", name: "Aufzeichnung gestartet: " + (hrDev.name || "Gurt"), start: Date.now(), session: hrRec });
+      $("hrstop").disabled = false; $("hrconnect").textContent = "Neu verbinden"; hrStatus("Verbunden. Warte auf Herzschläge …");
+    } catch (e) { hrRec = null; hrStatus("Gurt nicht erreichbar: " + (e.message || e)); }
+  }
+  if (vDev) {
+    try {
+      vRec = idstamp(new Date()); vN = 0; vP = 0; vG = 0; vFrameSeen = false; vPpgSeen = false; vGSeen = false; $("vplace").disabled = true;
+      await vAttach(); vWanted = true; markRec();
+      addEntry({ typ: "Sense", name: "Aufzeichnung gestartet: " + (vDev.name || "Verity Sense"), start: Date.now(), session: vRec });
+      $("vstop").disabled = false; $("vconnect").textContent = "Neu verbinden"; vStatus("Verbunden.");
+    } catch (e) { vRec = null; $("vplace").disabled = false; vStatus("Sense nicht erreichbar: " + (e.message || e)); }
+  }
+  if (micWas) $("micstart").click();
+  if (tpDev) tpFetch();
+  keepAwake(); wlShow(); flush();
+}
+$("master").addEventListener("click", () => {
+  if (anyActive()) {
+    if (Date.now() - masterArm > 4000) { masterArm = Date.now(); masterShow(); return; }
+    masterArm = 0; stopAll().then(masterShow);
+  } else if (knownDevices()) { $("master").disabled = true; $("master").textContent = "Starte …"; startAll().then(masterShow); }
+});
+setInterval(masterShow, 1000);
+function statusLine() {
+  const p = [];
+  if (hrWanted) p.push(lastBpm ? `Puls ${lastBpm}` : "Gurt");
+  if (vWanted) p.push(`Sense ${vPlace}`);
+  if (micOn) p.push("Mikro");
+  if (tpDev) p.push("Temp");
+  if (breath) p.push("Atem");
+  if (test) p.push("Test: " + test.ph);
+  if (mPause) p.push("Musik aus");
+  return p.join(" · ");
+}
+function updateMeta() {
+  if (!("mediaSession" in navigator) || !anyActive()) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: current ? passName() : "Aufzeichnung läuft", artist: statusLine() || "nichts verbunden", album: "Halt: Marker · Vor: Musik · Zurück: Atem" });
+    navigator.mediaSession.playbackState = "playing";
+  } catch (e) {}
+}
+setInterval(updateMeta, 5000);
+let recWasActive = false;
+function recStopped() {
+  try { keep.pause(); keep.currentTime = 0; } catch (e) {}
+  try { if (!running) audio.pause(); } catch (e) {}
+  try { bCancel(); if (ctx && ctx.state === "running") ctx.suspend().catch(() => {}); } catch (e) {}
+  if (!("mediaSession" in navigator)) return;
+  try {
+    const t = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: "Aufzeichnung gestoppt", artist: "beendet um " + t, album: "Bitte „Alles speichern“ tippen" });
+    navigator.mediaSession.playbackState = "paused";
+  } catch (e) {}
+}
+function recWatch() {
+  const a = anyActive();
+  if (recWasActive && !a) recStopped();
+  recWasActive = a;
+}
+setInterval(recWatch, 1000);
+const ALIVE = "messplayer_aktiv";
+function aliveTick() {
+  try {
+    if (anyActive()) localStorage.setItem(ALIVE, JSON.stringify({ t: Date.now(), hr: hrWanted, v: vWanted, m: micOn, tp: !!tpDev, mu: running }));
+    else localStorage.removeItem(ALIVE);
+  } catch (e) {}
+}
+setInterval(aliveTick, 5000);
+function crashCheck() {
+  try {
+    const a = JSON.parse(localStorage.getItem(ALIVE) || "null"); localStorage.removeItem(ALIVE);
+    if (!a) return;
+    const list = [a.hr && "Gurt", a.v && "Sense", a.m && "Mikrofon", a.tp && "Thermometer", a.mu && "Musik"].filter(Boolean).join(", ") || "Aufzeichnung";
+    const when = stamp(new Date(a.t)).slice(0, 8);
+    addEntry({ typ: "Abbruch", name: `Seite wurde neu geladen, offen war: ${list}. Zuletzt aktiv ${when}`, start: Date.now() }); flush();
+    $("crash").style.display = "block"; $("crash").textContent = `Die Aufzeichnung wurde um ${when} unterbrochen (Seite neu geladen). Bitte neu verbinden: ${list}.`;
+  } catch (e) {}
+}
+
+/* ================= Version 8: Ansage, Tasten, Testablauf, angepasste Atemhilfe ================= */
+function say(text) {
+  try {
+    if ("speechSynthesis" in window) {
+      const u = new SpeechSynthesisUtterance(text); u.lang = "de-DE"; u.rate = 1; u.volume = 1;
+      const v = speechSynthesis.getVoices().find(x => /^de/i.test(x.lang)); if (v) u.voice = v;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    }
+  } catch (e) {}
+  addEntry({ typ: "Ansage", name: text, start: Date.now() });
+}
+try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } catch (e) {}
+
+/* Herzschläge im Speicher für die Schätzung der Atemdauer */
+const memBeats = [];
+function memBeat(t, rr) { memBeats.push([t, rr]); if (memBeats.length > 20000) memBeats.splice(0, 5000); }
+/* Brustbeschleunigung der letzten 25 Minuten im Speicher, für die Atemzüge */
+const memAcc = { t: [], x: [], y: [], z: [] };
+function memAccPush(now, vals, dt) {
+  const n = vals.length / 3;
+  for (let i = 0; i < n; i++) { memAcc.t.push(now - (n - 1 - i) * dt); memAcc.x.push(vals[3 * i]); memAcc.y.push(vals[3 * i + 1]); memAcc.z.push(vals[3 * i + 2]); }
+  if (memAcc.t.length > 120000) { const k = memAcc.t.length - 90000; for (const key of ["t", "x", "y", "z"]) memAcc[key].splice(0, k); }
+}
+/* Atemdauer als Median der erkannten Atemzüge im Zeitraum: zuerst sichere aus der Brust, sonst aus der Atemwelle im Puls */
+function estBreathCycles(fromT, toT) {
+  const raw = memBeats.filter(x => x[0] >= fromT && x[0] <= toT && x[1] > 300 && x[1] < 2000);
+  const b = raw.filter((x, i) => { const w = raw.slice(Math.max(0, i - 5), i + 6).map(y => y[1]).sort((p, q) => p - q); const m = w[w.length >> 1]; return Math.abs(x[1] - m) < 0.2 * m; });
+  const bp = b.length > 60 ? breathsPulse(Float64Array.from(b, x => x[0]), Float32Array.from(b, x => 60000 / x[1])) : [];
+  const lo = lowerBound(memAcc.t, fromT), hi = lowerBound(memAcc.t, toT);
+  let chest = [];
+  if (hi - lo > 1500) {
+    const A = { t: Float64Array.from(memAcc.t.slice(lo, hi)), c: [Float32Array.from(memAcc.x.slice(lo, hi)), Float32Array.from(memAcc.y.slice(lo, hi)), Float32Array.from(memAcc.z.slice(lo, hi))] };
+    const bc = breathsChest(A);
+    bc.list.forEach(c => { if (!c.sicher || !c.aufrecht) return; const near = bp.filter(p => Math.abs(p.t - c.t) < 60000 && p.tiefe >= 6).map(p => p.dauer).sort((x, y) => x - y);
+      if (near.length >= 3) { const md = near[near.length >> 1]; if (Math.abs(c.dauer - md) > 0.4 * md) c.sicher = false; } });
+    chest = bc.list.filter(c => c.sicher);
+  }
+  const med = a => { const s = a.map(c => c.dauer).sort((x, y) => x - y); return s[s.length >> 1]; };
+  if (chest.length >= 10) return { ms: Math.round(med(chest) * 1000), n: chest.length, quelle: "Brust" };
+  if (bp.length >= 10) return { ms: Math.round(med(bp) * 1000), n: bp.length, quelle: "Puls" };
+  return null;
+}
+function estBreath(fromT, toT) {
+  /* Herzschläge bereinigen: Abweichung über 20 Prozent vom Median der Nachbarn verwerfen */
+  const raw = memBeats.filter(x => x[0] >= fromT && x[0] <= toT && x[1] > 300 && x[1] < 2000);
+  const b = raw.filter((x, i) => { const w = raw.slice(Math.max(0, i - 5), i + 6).map(y => y[1]).sort((p, q) => p - q); const m = w[w.length >> 1]; return Math.abs(x[1] - m) < 0.2 * m; });
+  if (b.length < 60) return null;
+  const t0 = b[0][0], n = Math.floor((b[b.length - 1][0] - t0) / 250); if (n < 240) return null;
+  const rr = new Float32Array(n); let j = 0;
+  for (let i = 0; i < n; i++) { const t = t0 + i * 250; while (j < b.length - 2 && b[j + 1][0] < t) j++; const a = b[j], c = b[j + 1], f = (t - a[0]) / ((c[0] - a[0]) || 1); rr[i] = a[1] * (1 - f) + c[1] * f; }
+  const sl = movMean(rr, 120), x = Float32Array.from(rr, (v, i) => v - sl[i]);
+  /* gemitteltes Spektrum (Welch): Abschnitte von 120 s, halb überlappend, Hann-Fenster */
+  const N = Math.min(480, n), P = new Float64Array(N >> 1); let cnt = 0;
+  for (let a = 0; a + N <= n; a += N >> 1) {
+    for (let k = 1; k < (N >> 1); k++) { let re = 0, im = 0; for (let i = 0; i < N; i++) { const w = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1)), v = x[a + i] * w, ph = 2 * Math.PI * k * i / N; re += v * Math.cos(ph); im -= v * Math.sin(ph); } P[k] += re * re + im * im; }
+    cnt++;
+  }
+  if (!cnt) return null;
+  const df = 4 / N; let tot = 0, bk = 0, bv = -1;
+  for (let k = 1; k < (N >> 1); k++) { const f = k * df; if (f < 0.05 || f > 0.4) continue; tot += P[k]; if (P[k] > bv) { bv = P[k]; bk = k; } }
+  if (!tot || !bk) return null;
+  let band = 0; for (let k = bk - 2; k <= bk + 2; k++) if (k > 0 && k < (N >> 1)) band += P[k];
+  /* Feinlage der Spitze über die Parabel durch die Nachbarn */
+  const y0 = P[bk - 1] || 0, y1 = P[bk], y2 = P[bk + 1] || 0, den = y0 - 2 * y1 + y2, d = den < 0 ? 0.5 * (y0 - y2) / den : 0;
+  const f = (bk + d) * df, q = band / tot;
+  return q >= 0.12 ? { ms: Math.round(1000 / f), r: q } : null;
+}
+function atemTimes(fromT, toT) {
+  const T = bTimes(); if (!T) return null;
+  if ($("bmode").value !== "angepasst") return T;
+  let e = estBreathCycles(fromT, toT), how = "";
+  if (e) how = `Median aus ${e.n} Atemzügen (${e.quelle})`;
+  else { const s = estBreath(fromT, toT); if (s) { e = s; how = `Spektrum des Pulses (Anteil der Spitze ${Math.round(s.r * 100)} %)`; } }
+  if (!e) { addEntry({ typ: "Atemhilfe", name: "Atemdauer nicht schätzbar, feste Zeiten", start: Date.now() }); return T; }
+  const k = e.ms / T.reduce((a, c) => a + c, 0);
+  const N = T.map((v, i) => { const x = Math.round(v * k / 100) * 100; return (i === 0 || i === 2) ? Math.max(500, x) : x; });
+  addEntry({ typ: "Atemhilfe", name: `Angepasst: Atemdauer ${num(e.ms / 1000)} s, ${how}, Zeiten ${N.map(v => num(v / 1000)).join(" / ")} s`, start: Date.now() });
+  return N;
+}
+function bStartWith(T) {
+  if (!T) return;
+  if (breath) { bCancel(); bWrite(); breath = null; }
+  bTon = true; if (!sleep) bFade = 1;
+  bBegin(T); bLogState("an"); bShow(); keepAwake(); wlShow();
+}
+function bOff() {
+  if (!breath) return;
+  bOpt = false; bTon = false; bCancel(); bWrite(); breath = null;
+  addEntry({ typ: "Atemhilfe", name: "aus", start: Date.now() }); flush(); bShow(); wlShow();
+}
+
+/* Musik an und aus über die Taste Vor */
+let mPause = null;
+function musicReady() { return PIECES.every(p => urls[p.key]) && readBlock() !== null; }
+function musicToggle() {
+  if (mPause) { musicResume(); return; }
+  if (!running) {
+    if (!musicReady()) { say("Musik nicht bereit"); return; }
+    startMusic(); say("Musik an"); return;
+  }
+  if (!current) return;
+  const ct = audio.currentTime || 0, dur = audio.duration || 0;
+  const frac = dur ? ((current.rep - 1) * dur + ct) / (dur * current.reps) : 0;
+  mPause = { t: Date.now(), ct, frac, sil: current.name === "Stille" };
+  audio.pause(); stall = null;
+  finishPass(` (unterbrochen bei ${ct.toFixed(1)} s)`);
+  addEntry({ typ: "Musik", block: current.block, pos: current.pos, name: `aus (Taste) bei ${ct.toFixed(1)} s, ${Math.round(frac * 100)} % gelaufen`, start: Date.now() });
+  $("now").textContent = "Musik aus (Taste Vor schaltet wieder an)";
+  say("Musik aus"); flush();
+}
+function musicResume() {
+  const p = mPause; mPause = null;
+  if (!running || !current) { say("Musik an"); return; }
+  const now = Date.now();
+  if (p.sil) {
+    current.start = Math.round(now - (audio.currentTime || 0) * 1000); lastDrift = null;
+    addEntry({ typ: "Stückstart", block: current.block, pos: current.pos, name: passName() + ` (Fortsetzung ab ${p.ct.toFixed(1)} s)`, start: now });
+    addEntry({ typ: "Musik", name: "an, Stille läuft weiter", start: now }); tryPlay();
+  } else if (p.frac >= 0.9) {
+    addEntry({ typ: "Musik", name: "an, Stück war zu 90 % gelaufen, weiter mit dem nächsten", start: now });
+    current = null; if (!(sleep && sleep.calm)) pos++; next();
+  } else {
+    addEntry({ typ: "Musik", name: "an, Stück beginnt von vorn", start: now });
+    current.rep = 1; current.start = null; current.end = null; audio.currentTime = 0; tryPlay();
+  }
+  say("Musik an"); flush();
+}
+function breathKey() {
+  if (breath) { bOff(); say("Atemhilfe aus"); return; }
+  const T = atemTimes(Date.now() - 300000, Date.now()); if (!T) { say("Atemzeiten prüfen"); return; }
+  bStartWith(T); say("Atemhilfe an");
+}
+
+/* Testablauf Gehen */
+let test = null;
+function testShow() {
+  if (!test) { $("teststatus").textContent = $("testab").checked ? "Bereit. Taste Vor am Testort startet den Ablauf." : ""; return; }
+  const el = Math.round((Date.now() - test.t) / 1000);
+  $("teststatus").textContent = `Abschnitt: ${test.ph} seit ${Math.floor(el / 60)}:${pad(el % 60)}`;
+}
+function testSet(ph, msg) { test.ph = ph; test.t = Date.now(); addEntry({ typ: "Testabschnitt", name: ph, start: test.t }); if (msg) say(msg); testShow(); flush(); }
+function testStart() {
+  if (test) return;
+  if (!musicReady()) { say("Musikdateien fehlen"); return; }
+  if (running) stopMusic("Musik für den Testablauf beendet");
+  test = { ph: "", t: Date.now() };
+  testSet("Ohne Musik", "Test beginnt. Zwei Minuten ohne Musik.");
+}
+function testBlockEnd() {
+  if (!test) return false;
+  if (test.ph === "Durchgang 1") {
+    const T = atemTimes(test.d1, Date.now());
+    testSet("Durchgang 2 mit Atem", "Durchgang zwei mit Atemhilfe."); bStartWith(T); return false;
+  }
+  if (test.ph === "Durchgang 2 mit Atem") {
+    setTimeout(() => { stopMusic(); bOff(); testSet("Auslaufen", "Auslaufen, zwei Minuten."); }, 0); return true;
+  }
+  return false;
+}
+setInterval(() => {
+  if (!test) return;
+  const el = Date.now() - test.t;
+  if (test.ph === "Ohne Musik" && el >= 120000) { if (!running) startMusic(); test.d1 = Date.now(); testSet("Durchgang 1", "Musik an. Durchgang eins."); }
+  else if (test.ph === "Auslaufen" && el >= 120000) testSet("Abweg", "Ende des Tests.");
+  testShow();
+}, 1000);
+$("testab").addEventListener("change", () => {
+  if ($("testab").checked) addEntry({ typ: "Testabschnitt", name: "Anweg", start: Date.now() });
+  else { if (test) addEntry({ typ: "Testabschnitt", name: "Testablauf beendet", start: Date.now() }); test = null; }
+  testShow(); flush();
+});
+$("teststart").addEventListener("click", () => { if (!$("testab").checked) { $("testab").checked = true; $("testab").dispatchEvent(new Event("change")); } testStart(); });
+
+/* Klopfabgleich live: grob aus der Ankunftszeit, genau rechnet der Export */
+const tapLive = { c: [], f: [], mc: null, mf: null, done: 0 };
+function tapFeed(k, now, vals, dt) {
+  const n = vals.length / 3, key = k === "c" ? "mc" : "mf", Lst = tapLive[k], thr = k === "c" ? 250 : 1000;
+  for (let i = 0; i < n; i++) {
+    const mag = Math.hypot(vals[3 * i], vals[3 * i + 1], vals[3 * i + 2]), m = tapLive[key] ?? mag;
+    tapLive[key] = m + 0.05 * (mag - m);
+    const t = now - (n - 1 - i) * dt;
+    if (Math.abs(mag - m) > thr && (!Lst.length || t - Lst[Lst.length - 1] > 120)) { Lst.push(t); if (Lst.length > 30) Lst.shift(); }
+  }
+  tapCheck();
+}
+/* letzte abgeschlossene Gruppe von 3 bis 8 Klopfern, davor 1,5 s ruhig, danach 1,5 s nichts mehr */
+function tapGrp(L) {
+  const n = L.length; if (n < 3 || Date.now() - L[n - 1] < 1500) return null;
+  let s = n - 1; while (s > 0 && L[s] - L[s - 1] >= 120 && L[s] - L[s - 1] <= 900) s--;
+  const k = n - s; if (k < 3 || k > 25) return null;
+  if (s > 0 && L[s] - L[s - 1] < 1200) return null;
+  return L.slice(s);
+}
+function tapCheck() {
+  const gc = tapGrp(tapLive.c), gf = tapGrp(tapLive.f); if (!gc || !gf) return;
+  if (Math.abs(gc[0] - gf[0]) > 3000 || gc[0] === tapLive.done) return;
+  tapLive.done = gc[0];
+  addEntry({ typ: "Abgleich", name: `Klopfen an Gurt und Sense erkannt (${gc.length} an der Brust, ${gf.length} am Fuß), grober Versatz ${Math.round(gc[0] - gf[0])} ms, genau beim Speichern`, start: gc[0] });
+  $("vstatus").textContent = "Abgleich erkannt ✓"; say("Abgleich erkannt"); flush();
+}
+
+/* ================= Version 8: Sparmodus (Excel und JSON) ================= */
+function lowerBound(t, x) { let lo = 0, hi = t.length; while (lo < hi) { const m = (lo + hi) >> 1; if (t[m] < x) lo = m + 1; else hi = m; } return lo; }
+function movMean(a, w) {
+  const n = a.length, o = new Float32Array(n), p = new Float64Array(n + 1), h = w >> 1;
+  for (let i = 0; i < n; i++) p[i + 1] = p[i] + a[i];
+  for (let i = 0; i < n; i++) { const lo = Math.max(0, i - h), hi = Math.min(n, i + h + 1); o[i] = (p[hi] - p[lo]) / (hi - lo); }
+  return o;
+}
+function medianSub(a) {
+  if (!a || !a.length) return 0;
+  const step = Math.max(1, Math.floor(a.length / 20000)), s = [];
+  for (let i = 0; i < a.length; i += step) s.push(a[i]);
+  s.sort((x, y) => x - y); return s[s.length >> 1];
+}
+function peaksAbove(sig, t, thr, minDist) {
+  const out = [];
+  for (let i = 1; i < sig.length - 1; i++) {
+    if (sig[i] < thr || sig[i] < sig[i - 1] || sig[i] <= sig[i + 1]) continue;
+    const L = out.length ? out[out.length - 1] : -1;
+    if (L >= 0 && t[i] - t[L] < minDist) { if (sig[i] > sig[L]) out[out.length - 1] = i; }
+    else out.push(i);
+  }
+  return out;
+}
+/* Rohpakete in eine Zeitreihe auf der Uhr des Handys auflösen */
+/* tatsächlicher Abstand je Sitzung aus den Sensorzeiten (Median), falls die Geräterate von der Vorgabe abweicht */
+const dtCache = new WeakMap();
+function sessDt(arr, ch) {
+  let m = dtCache.get(arr); if (m) return m; m = {};
+  const L = {};
+  for (let i = 1; i < arr.length; i++) { const p = arr[i - 1], c = arr[i]; if (p.s !== c.s) continue; const n = c.v.length / (ch || 3); if (n <= 0) continue; const d = (c.us - p.us) / 1000 / n; if (d > 0) (L[c.s] = L[c.s] || []).push(d); }
+  for (const k in L) { const a = L[k].sort((x, y) => x - y); m[k] = a[a.length >> 1]; }
+  dtCache.set(arr, m); return m;
+}
+function realDtG(arr, i, n, nominal, ch) {
+  const md = sessDt(arr, ch)[arr[i].s]; if (md && (md < nominal * 0.75 || md > nominal * 1.25)) nominal = md;
+  const p = i > 0 ? arr[i - 1] : null; if (!p || p.s !== arr[i].s || n <= 0) return nominal;
+  const d = (arr[i].us - p.us) / 1000 / n;
+  return d > nominal * 0.75 && d < nominal * 1.25 ? d : nominal;
+}
+function expand(arr, offs, key, ch, scale) {
+  let n = 0; arr.forEach(c => n += Math.floor(c.v.length / ch));
+  const t = new Float64Array(n), c = []; for (let k = 0; k < ch; k++) c.push(new Float32Array(n));
+  let j = 0;
+  arr.forEach((p, idx) => {
+    const m = Math.floor(p.v.length / ch), dt = realDtG(arr, idx, m, 1000 / p.r, ch);
+    const base = p.us / 1000 + offs[key + (p.s ?? "")], sc = scale ? scale(p) : 1;
+    for (let i = 0; i < m; i++, j++) { t[j] = base - (m - 1 - i) * dt; for (let k = 0; k < ch; k++) c[k][j] = p.v[ch * i + k] * sc; }
+  });
+  let sorted = true; for (let i = 1; i < n; i++) if (t[i] < t[i - 1]) { sorted = false; break; }
+  if (sorted) return { t, c };
+  const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => t[a] - t[b]);
+  return { t: Float64Array.from(idx, i => t[i]), c: c.map(a => Float32Array.from(idx, i => a[i])) };
+}
+function rateOf(X) {
+  if (!X || X.t.length < 10) return 55;
+  const n = Math.min(X.t.length - 1, 2000), d = []; for (let i = 1; i <= n; i++) d.push(X.t[i] - X.t[i - 1]);
+  d.sort((a, b) => a - b); const m = d[d.length >> 1]; return m > 0 ? 1000 / m : 55;
+}
+function W(X, sec) { return Math.max(1, Math.round(sec * rateOf(X))); }
+function magOf(X) { const n = X.t.length, m = new Float32Array(n); for (let i = 0; i < n; i++) m[i] = Math.hypot(X.c[0][i], X.c[1][i], X.c[2][i]); return m; }
+function magHP(X, w) { const m = magOf(X), s = movMean(m, w); for (let i = 0; i < m.length; i++) m[i] = Math.abs(m[i] - s[i]); return m; }
+function localHP(X, i, w) {
+  const lo = Math.max(0, i - w), hi = Math.min(X.t.length, i + w + 1), o = [0, 0, 0];
+  for (let k = 0; k < 3; k++) { let s = 0; for (let j = lo; j < hi; j++) s += X.c[k][j]; o[k] = Math.round(X.c[k][i] - s / (hi - lo)); }
+  return o;
+}
+
+/* R-Zacken aus dem EKG */
+function rPeaks(E) {
+  if (!E || E.t.length < 600) return [];
+  const t = E.t, e = E.c[0], n = e.length, base = movMean(e, 13), hp = new Float32Array(n), d = new Float32Array(n);
+  for (let i = 0; i < n; i++) hp[i] = e[i] - base[i];
+  for (let i = 2; i < n; i++) { const x = hp[i] - hp[i - 2]; d[i] = x * x; }
+  const s = movMean(d, 15), thr = new Float32Array(n), B = 1300;
+  for (let a = 0; a < n; a += B) { const b = Math.min(n, a + B), seg = Array.from(s.subarray(a, b)).sort((x, y) => x - y); thr.fill(0.3 * seg[Math.floor(0.98 * (seg.length - 1))], a, b); }
+  const pk = [];
+  for (let i = 1; i < n - 1; i++) if (s[i] > thr[i] && s[i] >= s[i - 1] && s[i] > s[i + 1]) {
+    const L = pk.length ? pk[pk.length - 1] : -1;
+    if (L >= 0 && t[i] - t[L] < 330) { if (s[i] > s[L]) pk[pk.length - 1] = i; } else pk.push(i);
+  }
+  return pk.map(i => { let b = i; for (let k = Math.max(0, i - 11); k < Math.min(n, i + 11); k++) if (Math.abs(hp[k]) > Math.abs(hp[b])) b = k; return t[b]; });
+}
+/* Herzschläge auf die R-Zacken legen: Versatz je 10 Minuten aus dem Histogramm der Abstände */
+function alignBeats(B, R) {
+  if (!R.length) return { lag: null, ok: 0, out: B.map(b => ({ t: b.t, ok: false })) };
+  /* Versatz der Herzschlag-Zeit zur R-Zacke je 5 Minuten: Histogramm der Abstände, gültig wenn die Spitze mindestens 30 Prozent der Schläge trägt */
+  const CH = 300000, hist = new Map(), cnt = new Map(), NB = 601;
+  for (const b of B) {
+    const key = Math.floor(b.t / CH); let h = hist.get(key); if (!h) { h = new Int32Array(NB); hist.set(key, h); cnt.set(key, 0); } cnt.set(key, cnt.get(key) + 1);
+    for (let k = lowerBound(R, b.t - 5000), hi = lowerBound(R, b.t + 1000); k < hi; k++) { const d = Math.round((b.t - R[k]) / 10) + 100; if (d >= 0 && d < NB) h[d]++; }
+  }
+  const mode = h => { let bi = 1, bv = -1; for (let i = 1; i < NB - 1; i++) { const v = h[i - 1] + h[i] + h[i + 1]; if (v > bv) { bv = v; bi = i; } } return { lag: (bi - 100) * 10, v: bv }; };
+  const glob = new Int32Array(NB); hist.forEach(h => { for (let i = 0; i < NB; i++) glob[i] += h[i]; });
+  const g = mode(glob), lagOf = {}, used = [];
+  hist.forEach((h, key) => { const m = mode(h); if (m.v > 0.3 * cnt.get(key)) { lagOf[key] = m.lag; used.push(m.lag); } });
+  used.sort((a, b) => a - b); if (used.length) g.lag = used[used.length >> 1];
+  const keys = Object.keys(lagOf).map(Number).sort((a, b) => a - b);
+  const nearLag = key => { if (lagOf[key] !== undefined) return [lagOf[key]]; const o = []; let best = null; keys.forEach(k => { if (best === null || Math.abs(k - key) < Math.abs(best - key)) best = k; }); if (best !== null) o.push(lagOf[best]); o.push(g.lag); return o; };
+  let ok = 0;
+  const out = B.map(b => {
+    const key = Math.floor(b.t / CH), cands = [...nearLag(key), lagOf[key - 1], lagOf[key + 1]].filter(x => x !== undefined);
+    for (const lag of cands) {
+      const want = b.t - lag, k = lowerBound(R, want); let best = null;
+      for (const j of [k - 1, k]) if (j >= 0 && j < R.length && Math.abs(R[j] - want) < 120 && (best === null || Math.abs(R[j] - want) < Math.abs(best - want))) best = R[j];
+      if (best !== null) { ok++; return { t: best, ok: true }; }
+    }
+    return { t: b.t - cands[0], ok: false };
+  });
+  return { lag: g.lag, ok, out };
+}
+
+/* Klopfen in Brust und Fuß: Gruppen von 3 bis 8 Spitzen im Abstand 0,12 bis 0,9 s, davor ruhig */
+function tapPeaks(X, w, floor) {
+  if (!X || X.t.length < 100) return { pk: [], m: null };
+  const m = magHP(X, w), t = X.t, base = movMean(m, Math.round(2000 / ((t[t.length - 1] - t[0]) / t.length)) | 1);
+  const idx = peaksAbove(m, t, floor, 120);
+  const pk = idx.map(i => {
+    let tt = t[i];
+    if (i >= 1 && i < m.length - 1) { const a = m[i - 1], b = m[i], c = m[i + 1], den = a - 2 * b + c; if (den < 0) tt += 0.5 * (a - c) / den * (t[i + 1] - t[i]); }
+    return { t: tt, h: m[i], i };
+  });
+  return { pk, m, base };
+}
+function tapGroups(X, w, floor) {
+  const { pk, m } = tapPeaks(X, w, floor); if (!pk.length) return [];
+  const g = [];
+  for (let i = 0; i < pk.length;) {
+    let e = i; while (e + 1 < pk.length && pk[e + 1].t - pk[e].t >= 120 && pk[e + 1].t - pk[e].t <= 900) e++;
+    const n = e - i + 1;
+    if (n >= 3 && n <= 25) {
+      /* ruhig in der Sekunde davor: dort kein Wert über einem Drittel der mittleren Spitze */
+      const lo = lowerBound(X.t, pk[i].t - 1200), hi = lowerBound(X.t, pk[i].t - 200), hs = pk.slice(i, e + 1).map(p => p.h).sort((x, y) => x - y), minH = hs[hs.length >> 1] * 1.7;
+      let q = 0; for (let k = lo; k < hi; k++) q = Math.max(q, m[k]);
+      if (q < minH / 5 && (i === 0 || pk[i].t - pk[i - 1].t > 1200)) g.push(pk.slice(i, e + 1).map(p => p.t));
+    }
+    i = e + 1;
+  }
+  return g;
+}
+/* Versatz über die Ähnlichkeit der Klopfspuren: beide Beträge auf 2 ms gerastert, logarithmiert, Korrelation über plus minus 500 ms, gültig ab 0,6 */
+function envAt(X, hp, t0, t1) { const n = Math.floor((t1 - t0) / 2), o = new Float32Array(n); let j = lowerBound(X.t, t0) - 1; if (j < 0) j = 0;
+  for (let i = 0; i < n; i++) { const t = t0 + 2 * i; while (j < X.t.length - 2 && X.t[j + 1] < t) j++; const a = X.t[j], b = X.t[j + 1] ?? a, f = b > a ? Math.min(1, Math.max(0, (t - a) / (b - a))) : 0; o[i] = Math.log1p(hp[j] * (1 - f) + (hp[j + 1] ?? hp[j]) * f); } return o; }
+function corr(a, b) { const n = Math.min(a.length, b.length); let ma = 0, mb = 0; for (let i = 0; i < n; i++) { ma += a[i]; mb += b[i]; } ma /= n; mb /= n; let sab = 0, saa = 0, sbb = 0; for (let i = 0; i < n; i++) { const x = a[i] - ma, y = b[i] - mb; sab += x * y; saa += x * x; sbb += y * y; } return saa && sbb ? sab / Math.sqrt(saa * sbb) : 0; }
+function tapSync(A, F, hints) {
+  const gc = tapGroups(A, W(A, 0.3), 250), gf = tapGroups(F, W(F, 0.3), 1000), pairs = [];
+  if (gc.length && F) {
+    const ha = magHP(A, W(A, 0.3)), hf = magHP(F, W(F, 0.3));
+    gc.forEach(c => {
+      const t0 = c[0] - 300, t1 = c[c.length - 1] + 300, ce = envAt(A, ha, t0, t1); let best = { off: 0, r: -1 };
+      for (let off = -500; off <= 500; off += 2) { const r = corr(ce, envAt(F, hf, t0 - off, t1 - off)); if (r > best.r) best = { off, r }; }
+      if (best.r > 0.6) pairs.push({ t: c[0], off: best.off, r: best.r, n: c.length, streu: null });
+    });
+  }
+  /* Hinweise aus der Live-Erkennung: um jede gemeldete Klopfstelle mit größerem Suchbereich (plus minus 1,5 s) */
+  const live = [];
+  if (hints && hints.length && A && F) {
+    const ha = magHP(A, W(A, 0.3)), hf = magHP(F, W(F, 0.3));
+    hints.forEach(h => {
+      let best = { off: 0, r: -1 };
+      for (const [da, db] of [[-4000, 2500], [-1500, 2500], [-1000, 4000]]) {
+        const t0 = h + da, t1 = h + db, ce = envAt(A, ha, t0, t1); let b = { off: 0, r: -1 };
+        for (let off = -1500; off <= 1500; off += 4) { const r = corr(ce, envAt(F, hf, t0 - off, t1 - off)); if (r > b.r) b = { off, r }; }
+        for (let off = b.off - 4; off <= b.off + 4; off += 2) { const r = corr(ce, envAt(F, hf, t0 - off, t1 - off)); if (r > b.r) b = { off, r }; }
+        if (b.r > best.r) best = b;
+      }
+      if (best.r > 0.6) live.push({ t: h, off: best.off, r: best.r, n: "live", streu: null });
+    });
+    /* bewusstes Klopfen hat Vorrang: gibt es Treffer an den Live-Stellen, zählen nur diese */
+    if (live.length) { pairs.length = 0; pairs.push(...live); }
+    pairs.sort((a, b) => a.t - b.t);
+  }
+  let fn = () => 0, drift = null;
+  if (pairs.length === 1) fn = () => pairs[0].off;
+  if (pairs.length >= 2) { const p = pairs[0], q = pairs[pairs.length - 1]; if (q.t - p.t > 600000) { const k = (q.off - p.off) / (q.t - p.t); fn = t => p.off + k * (t - p.t); drift = k * 3600000; } else { const o = pairs.reduce((a, x) => a + x.off, 0) / pairs.length; fn = () => o; } }
+  return { gc, gf, pairs, fn, drift };
+}
+
+/* Schritte: rechts aus dem Fuß (Schwung über die Drehrate, sonst Aufprall), links aus dem Stoß an der Brust zwischen zwei rechten */
+function stepsDetect(F, G, A) {
+  const out = []; if (!F || F.t.length < 200) return out;
+  const fm = magHP(F, W(F, 0.4)), strikes = [], w4 = Math.max(2, W(F, 0.04));
+  if (G && G.t.length > 200) {
+    const gm = magOf(G), gs = movMean(gm, 3), cand = peaksAbove(gs, G.t, 80, 600);
+    /* Schwung des eigenen Beins: Spitze über 40 Prozent der stärksten in 3 s Umgebung */
+    cand.filter((i, k) => { let mx = 0; for (let j = k; j >= 0 && G.t[i] - G.t[cand[j]] < 3000; j--) mx = Math.max(mx, gs[cand[j]]); for (let j = k; j < cand.length && G.t[cand[j]] - G.t[i] < 3000; j++) mx = Math.max(mx, gs[cand[j]]); return gs[i] >= 0.4 * mx; }).forEach(i => {
+      const P = gs[i]; let e = i, s = i;
+      while (e < gs.length - 1 && gs[e] > 0.25 * P && G.t[e] - G.t[i] < 800) e++;
+      while (s > 0 && gs[s] > 0.25 * P && G.t[i] - G.t[s] < 800) s--;
+      const te = G.t[e]; let bi = -1;
+      for (let k = lowerBound(F.t, te - 100), hi = lowerBound(F.t, te + 200); k < hi; k++) if (bi < 0 || fm[k] > fm[bi]) bi = k;
+      strikes.push({ t: bi >= 0 ? F.t[bi] : te, fi: bi >= 0 ? bi : lowerBound(F.t, te), gpk: P, swing: (G.t[e] - G.t[s]) / 1000 });
+    });
+  } else {
+    /* eigener Aufprall ist am Knöchel stark, der Schritt des anderen Fußes nur schwach: relativ zum stärksten Ausschlag in 3 s Umgebung */
+    const fs = movMean(fm, w4), cand = peaksAbove(fs, F.t, 150, 300);
+    cand.forEach((i, k) => {
+      let mx = 0; for (let j = k; j >= 0 && F.t[i] - F.t[cand[j]] < 3000; j--) mx = Math.max(mx, fs[cand[j]]);
+      for (let j = k; j < cand.length && F.t[cand[j]] - F.t[i] < 3000; j++) mx = Math.max(mx, fs[cand[j]]);
+      if (fs[i] >= 0.4 * mx) { const L = strikes[strikes.length - 1]; if (L && F.t[i] - L.t < 600) { if (fs[i] > fs[L.fi]) strikes[strikes.length - 1] = { t: F.t[i], fi: i, gpk: null, swing: null }; } else strikes.push({ t: F.t[i], fi: i, gpk: null, swing: null }); }
+    });
+  }
+  const cm = A && A.t.length > 100 ? movMean(magHP(A, W(A, 0.3)), Math.max(2, W(A, 0.04))) : null, cthr = 30;
+  const inR = d => d >= 600 && d <= 2200;
+  /* sicher nur in einer Folge von mindestens vier gleichmäßigen Doppelschritten */
+  const run = new Int32Array(strikes.length);
+  for (let k = 0; k < strikes.length;) {
+    let e = k; while (e + 1 < strikes.length && inR(strikes[e + 1].t - strikes[e].t)) e++;
+    for (let j = k; j <= e; j++) run[j] = e - k + 1; k = e + 1;
+  }
+  strikes.forEach((R, k) => {
+    const nx = strikes[k + 1], I = nx ? nx.t - R.t : 0;
+    const walk = run[k] >= 5;
+    const fi = Math.min(R.fi, F.t.length - 1);
+    const w6 = W(F, 0.06); let sp = 0; for (let j = Math.max(0, fi - w6); j <= Math.min(fm.length - 1, fi + w6); j++) sp = Math.max(sp, fm[j]);
+    out.push({ t: R.t, side: "R", spitze: Math.round(sp), vec: localHP(F, fi, W(F, 0.2)), gyro: R.gpk, swing: R.swing, brust: null, sicher: walk });
+    if (nx && inR(I) && cm) {
+      let bi = -1;
+      for (let j = lowerBound(A.t, R.t + 0.3 * I), hi = lowerBound(A.t, R.t + 0.7 * I); j < hi; j++) if (bi < 0 || cm[j] > cm[bi]) bi = j;
+      if (bi >= 0 && cm[bi] > cthr) out.push({ t: A.t[bi], side: "L", spitze: null, vec: localHP(A, bi, W(A, 0.16)), gyro: null, swing: null, brust: Math.round(cm[bi]), sicher: walk });
+      else out.push({ t: R.t + I / 2, side: "L", spitze: null, vec: null, gyro: null, swing: null, brust: null, sicher: false });
+    }
+  });
+  out.sort((a, b) => a.t - b.t);
+  out.forEach((s, i) => {
+    s.dauer = out[i + 1] ? (out[i + 1].t - s.t) / 1000 : null;
+    const same = out.slice(i + 1, i + 4).find(x => x.side === s.side); s.doppel = same ? (same.t - s.t) / 1000 : null;
+    if (s.dauer !== null && s.dauer > 2.5) s.dauer = null;
+    if (s.doppel !== null && s.doppel > 3) s.doppel = null;
+  });
+  return out;
+}
+
+/* Atemzüge aus einer 10-Hz-Reihe: Tief, Hoch, Tief. Einatmen ist steigend. */
+function cycles(t, s, sdBlock, minD, maxD, hy = 0.5) {
+  const n = s.length, ev = []; let st = 0;
+  for (let i = 0; i < n; i++) { const h = hy * sdBlock[i]; if (st <= 0 && s[i] > h) { st = 1; ev.push([i, 1]); } else if (st >= 0 && s[i] < -h) { st = -1; ev.push([i, -1]); } }
+  const mins = [], maxs = [];
+  for (let k = 0; k < ev.length; k++) {
+    const a = k ? ev[k - 1][0] : 0, b = ev[k][0];
+    let bi = a; for (let i = a; i <= b; i++) if (ev[k][1] === 1 ? s[i] < s[bi] : s[i] > s[bi]) bi = i;
+    (ev[k][1] === 1 ? mins : maxs).push(bi);
+  }
+  const out = [];
+  for (let k = 0; k + 1 < mins.length; k++) {
+    const a = mins[k], c = mins[k + 1], b = maxs.find(x => x > a && x < c); if (b === undefined) continue;
+    const ein = (t[b] - t[a]) / 1000, aus = (t[c] - t[b]) / 1000, d = ein + aus;
+    if (d < minD || d > maxD) continue;
+    out.push({ a, b, c, t: t[a], ein, aus, dauer: d, tiefe: s[b] - Math.min(s[a], s[c]) });
+  }
+  return out;
+}
+function blockSd(s, B) { const o = new Float32Array(s.length); for (let a = 0; a < s.length; a += B) { const b = Math.min(s.length, a + B); let m = 0, q = 0; for (let i = a; i < b; i++) m += s[i]; m /= (b - a); for (let i = a; i < b; i++) q += (s[i] - m) ** 2; o.fill(Math.sqrt(q / (b - a)), a, b); } return o; }
+function breathsChest(A) {
+  const res = { bt: new Float64Array(0), bs: new Float32Array(0), list: [] };
+  if (!A || A.t.length < 1500) return res;
+  const t = A.t, n = t.length, t0 = t[0], nb = Math.ceil((t[n - 1] - t0) / 100) + 1;
+  const S = [new Float64Array(nb), new Float64Array(nb), new Float64Array(nb)], cnt = new Int32Array(nb), gap = new Uint8Array(nb);
+  const mhp = magHP(A, W(A, 0.5)), mov = new Float64Array(nb);
+  for (let i = 0; i < n; i++) { const k = Math.floor((t[i] - t0) / 100); for (let a = 0; a < 3; a++) S[a][k] += A.c[a][i]; mov[k] += mhp[i]; cnt[k]++; }
+  for (let k = 0; k < nb; k++) { if (cnt[k]) { for (let a = 0; a < 3; a++) S[a][k] /= cnt[k]; mov[k] /= cnt[k]; } else { gap[k] = 1; for (let a = 0; a < 3; a++) S[a][k] = k ? S[a][k - 1] : 0; mov[k] = 999; } }
+  const Fl = S.map(a => { const f = movMean(a, 10), sl = movMean(a, 200); return Float32Array.from(f, (v, i) => v - sl[i]); });
+  const s = new Float32Array(nb); let prev = null;
+  for (let a = 0; a < nb; a += 600) {
+    const b = Math.min(nb, a + 600), C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let i = a; i < b; i++) for (let p = 0; p < 3; p++) for (let q = 0; q < 3; q++) C[p][q] += Fl[p][i] * Fl[q][i];
+    let v = prev ? [...prev] : [1, 1, 1];
+    for (let it = 0; it < 30; it++) { const w = [0, 1, 2].map(p => C[p][0] * v[0] + C[p][1] * v[1] + C[p][2] * v[2]); const L = Math.hypot(...w) || 1; v = w.map(x => x / L); }
+    if (prev && v[0] * prev[0] + v[1] * prev[1] + v[2] * prev[2] < 0) v = v.map(x => -x);
+    prev = v; for (let i = a; i < b; i++) s[i] = v[0] * Fl[0][i] + v[1] * Fl[1][i] + v[2] * Fl[2][i];
+  }
+  const bt = Float64Array.from({ length: nb }, (_, k) => t0 + k * 100 + 50), sd = blockSd(s, 600);
+  let L = cycles(bt, s, sd, 1.5, 20);
+  const mEin = L.reduce((x, c) => x + c.ein, 0) / (L.length || 1), mAus = L.reduce((x, c) => x + c.aus, 0) / (L.length || 1);
+  if (L.length > 5 && mEin > mAus) { for (let i = 0; i < nb; i++) s[i] = -s[i]; L = cycles(bt, s, sd, 1.5, 20); }
+  const md = L.map(c => c.tiefe).sort((x, y) => x - y)[L.length >> 1] || 0;
+  L.forEach(c => {
+    let g = 0, mv = 0, gx = 0; for (let i = c.a; i <= c.c; i++) { g |= gap[i]; mv += mov[i]; gx += S[0][i]; } mv /= (c.c - c.a + 1); gx /= (c.c - c.a + 1);
+    c.aufrecht = Math.abs(gx) > 700;
+    c.quelle = "Brust"; c.sicher = !g && mv < 20 && c.tiefe >= 0.3 * md; c.tE = bt[c.b]; c.tEnd = bt[c.c];
+  });
+  res.bt = bt; res.bs = s; res.list = L; return res;
+}
+function breathsPulse(bt, bpm) {
+  if (bt.length < 60) return [];
+  const t0 = bt[0], n = Math.floor((bt[bt.length - 1] - t0) / 100), tt = new Float64Array(n), h = new Float32Array(n);
+  let j = 0;
+  for (let i = 0; i < n; i++) { const t = t0 + i * 100; while (j < bt.length - 2 && bt[j + 1] < t) j++; const f = (t - bt[j]) / ((bt[j + 1] - bt[j]) || 1); tt[i] = t; h[i] = bpm[j] * (1 - f) + bpm[j + 1] * f; }
+  const f = movMean(h, 10), sl = movMean(h, 200), s = Float32Array.from(f, (v, i) => v - sl[i]);
+  return cycles(tt, s, blockSd(s, 600), 2, 20).map(c => ({ ...c, quelle: "Puls", sicher: false, tE: tt[c.b], tEnd: tt[c.c] }));
+}
+
+/* ================= Excel schreiben ================= */
+function xesc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, ""); }
+function colName(i) { let s = ""; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+function sheetXml(rows) {
+  const cols = rows[0].map(colName), parts = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>'];
+  rows.forEach((r, ri) => {
+    let s = `<row r="${ri + 1}">`;
+    for (let ci = 0; ci < r.length; ci++) {
+      const v = r[ci]; if (v === null || v === undefined || v === "" || (typeof v === "number" && !Number.isFinite(v))) continue;
+      const ref = (cols[ci] || colName(ci)) + (ri + 1), st = ri === 0 ? ' s="1"' : "";
+      if (typeof v === "number") s += `<c r="${ref}"${st}><v>${Math.round(v * 10000) / 10000}</v></c>`;
+      else s += `<c r="${ref}" t="inlineStr"${st}><is><t>${xesc(v)}</t></is></c>`;
+    }
+    parts.push(s + "</row>");
+  });
+  parts.push("</sheetData></worksheet>"); return parts.join("");
+}
+async function makeXlsx(sheets) {
+  const ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+    sheets.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("") + "</Types>";
+  const rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+  const wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+    sheets.map((s, i) => `<sheet name="${xesc(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("") + "</sheets></workbook>";
+  const wbr = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("") +
+    `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const sty = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const enc = new TextEncoder(), files = [
+    { name: "[Content_Types].xml", data: enc.encode(ct) }, { name: "_rels/.rels", data: enc.encode(rels) },
+    { name: "xl/workbook.xml", data: enc.encode(wb) }, { name: "xl/_rels/workbook.xml.rels", data: enc.encode(wbr) }, { name: "xl/styles.xml", data: enc.encode(sty) }
+  ];
+  sheets.forEach((s, i) => files.push({ name: `xl/worksheets/sheet${i + 1}.xml`, data: enc.encode(sheetXml(s.rows)) }));
+  return new Uint8Array(await (await makeZip8(files)).arrayBuffer());
+}
+
+/* ZIP mit Kompression (deflate), falls der Browser es kann */
+async function deflateRaw(u8) {
+  if (typeof CompressionStream === "undefined") return null;
+  try { const s = new Blob([u8]).stream().pipeThrough(new CompressionStream("deflate-raw")); return new Uint8Array(await new Response(s).arrayBuffer()); } catch (e) { return null; }
+}
+async function makeZip8(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const f of files) {
+    const name = enc.encode(f.name), data = f.data, crc = crc32(data), comp = await deflateRaw(data);
+    const meth = comp && comp.length < data.length ? 8 : 0, body = meth ? comp : data;
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, meth, true);
+    h.setUint16(10, time, true); h.setUint16(12, date, true); h.setUint32(14, crc, true); h.setUint32(18, body.length, true); h.setUint32(22, data.length, true);
+    h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h.buffer, name, body);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, meth, true);
+    c.setUint16(12, time, true); c.setUint16(14, date, true); c.setUint32(16, crc, true); c.setUint32(20, body.length, true); c.setUint32(24, data.length, true);
+    c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    central.push(c.buffer, name);
+    off += 30 + name.length + body.length;
+  }
+  const csize = central.reduce((s, x) => s + (x.byteLength ?? x.length), 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, e.buffer], { type: "application/zip" });
+}
+
+/* ================= Nachtmodus: Ereignisse und Fenster ================= */
+function nightEvents(F, A, G, B, R, steps, fhp, zthr, T0) {
+  const ev = [], stepT = Float64Array.from(steps.filter(s => s.sicher), s => s.t);
+  const nearStep = t => { const k = lowerBound(stepT, t - 3000); return k < stepT.length && stepT[k] < t + 3000; };
+  /* Fußzuckungen: Spitze über der Schwelle, mindestens 8 s Abstand, Beginn rückwärts gesucht */
+  if (F && fhp) {
+    const pk = peaksAbove(fhp, F.t, zthr, 8000);
+    pk.forEach(i => {
+      const tp = F.t[i]; if (nearStep(tp)) return;
+      const lo = lowerBound(F.t, tp - 3000), hi = lowerBound(F.t, tp - 1000), q = [];
+      for (let k = lo; k < hi; k++) q.push(fhp[k]); q.sort((a, b) => a - b);
+      const base = q.length ? q[q.length >> 1] : 0, lim = Math.max(3 * base, 10);
+      let j = i; while (j > 0 && F.t[i] - F.t[j - 1] < 1000 && fhp[j - 1] > lim) j--;
+      ev.push({ art: "Zuckung", t: F.t[j], tPk: tp, fuss: fhp[i] });
+    });
+  }
+  /* starke Brustbewegung (Umdrehen, Husten), wenn keine Zuckung in der Nähe */
+  if (A) {
+    const ch = magHP(A, W(A, 0.5)), pk = peaksAbove(ch, A.t, 300, 30000);
+    pk.forEach(i => { const t = A.t[i]; if (ev.some(e => Math.abs(e.t - t) < 5000) || nearStep(t)) return; ev.push({ art: "Brust", t, tPk: t, fuss: null }); });
+  }
+  ev.sort((a, b) => a.t - b.t);
+  /* Werte um jedes Ereignis */
+  const chp = A ? magHP(A, W(A, 0.3)) : null, gm = G ? magOf(G) : null;
+  const maxIn = (X, h, a, b) => { if (!X) return null; let m = null; for (let k = lowerBound(X.t, a), e = lowerBound(X.t, b); k < e; k++) if (m === null || h[k] > m) m = h[k]; return m; };
+  const bt = Float64Array.from(B, b => b.tt), hrOf = k => { const b = B[k]; const rr = b.rre || b.rr; return 60000 / rr; };
+  ev.forEach((e, n) => {
+    e.nr = n + 1;
+    e.brust = maxIn(A, chp, e.t - 1000, e.t + 1000); e.dreh = maxIn(G, gm, e.t - 1000, e.t + 1000);
+    const kR = lowerBound(R, e.t); e.vorR = kR > 0 ? e.t - R[kR - 1] : null; e.nachR = kR < R.length ? R[kR] - e.t : null;
+    const k0 = lowerBound(bt, e.t);   /* Schlag 0 endet mit der ersten R-Zacke nach dem Beginn */
+    if (k0 >= 5 && k0 + 10 < B.length && B[k0 + 10].tt - B[k0 - 5].tt < 30000) {
+      const base = [-5, -4, -3, -2].map(d => hrOf(k0 + d)).reduce((a, c) => a + c, 0) / 4;
+      let pv = -1e9, pk = 0, tv = 1e9, tk = 0;
+      for (let d = 0; d <= 4; d++) { const h = hrOf(k0 + d); if (h > pv) { pv = h; pk = d; } }
+      for (let d = 5; d <= 10; d++) { const h = hrOf(k0 + d); if (h < tv) { tv = h; tk = d; } }
+      Object.assign(e, { base, pv, pk, tv, tk });
+    }
+  });
+  /* Fenster: 15 s davor bis 35 s danach, überlappende zusammengefasst */
+  const win = [];
+  ev.forEach(e => {
+    const a = e.t - 15000, b = e.t + 35000, L = win[win.length - 1];
+    if (L && a <= L.b) { L.b = Math.max(L.b, b); L.ev.push(e.nr); L.arten.add(e.art); } else win.push({ a, b, ev: [e.nr], arten: new Set([e.art]) });
+  });
+  /* Vergleichsfenster alle 10 Minuten, wo 60 s um den Punkt nichts los ist */
+  const first = Math.min(...[A?.t[0], F?.t[0]].filter(Number.isFinite)), last = Math.max(...[A?.t[A.t.length - 1], F?.t[F.t.length - 1]].filter(Number.isFinite));
+  const ctrl = [];
+  if (Number.isFinite(first)) for (let c = first + 600000; c < last - 60000; c += 600000) {
+    for (let s = 0; s < 6; s++) { const x = c + s * 60000; if (!ev.some(e => Math.abs(e.t - x) < 60000) && !win.some(w => x + 35000 > w.a && x - 15000 < w.b)) { ctrl.push({ a: x - 15000, b: x + 35000, ev: [], arten: new Set(["Vergleich"]) }); break; } }
+  }
+  const all = [...win, ...ctrl].sort((x, y) => x.a - y.a);
+  all.forEach((w, i) => { w.nr = i + 1; w.ev.forEach(n => { ev[n - 1].fenster = w.nr; }); });
+  return { ev, win: all };
+}
+
+/* Fenster spaltenweise: Zeit in ms seit t0 (0,1 ms), Werte gerundet */
+function nightJson(NE, A, F, G, E, R, T0) {
+  const col = (X, a, b, ch, dec) => { if (!X) return null; const lo = lowerBound(X.t, a), hi = lowerBound(X.t, b), f = 10 ** dec, o = { t: [] }; for (let c = 0; c < ch; c++) o["k" + c] = [];
+    for (let k = lo; k < hi; k++) { o.t.push(Math.round((X.t[k] - T0) * 10) / 10); for (let c = 0; c < ch; c++) o["k" + c].push(Math.round(X.c[c][k] * f) / f); } return o; };
+  const ren = (o, names) => { if (!o) return null; const r = { t: o.t }; names.forEach((n, i) => r[n] = o["k" + i]); return r; };
+  return { hinweis: "Fenster 15 s vor bis 35 s nach jedem Ereignis, überlappende zusammengefasst, dazu Vergleichsfenster alle 10 Minuten. Spalten t in ms seit t0.",
+    fenster: NE.win.map(w => ({ nr: w.nr, arten: [...w.arten], ereignisse: w.ev, start_ms: Math.round(w.a - T0), ende_ms: Math.round(w.b - T0),
+      r_zacken_ms: R.filter(x => x >= w.a && x < w.b).map(x => Math.round((x - T0) * 10) / 10),
+      brust: ren(col(A, w.a, w.b, 3, 0), ["x", "y", "z"]), fuss: ren(col(F, w.a, w.b, 3, 0), ["x", "y", "z"]), drehrate: ren(col(G, w.a, w.b, 3, 1), ["x", "y", "z"]), ekg: ren(col(E, w.a, w.b, 1, 0), ["uV"]) })) };
+}
+/* ================= Sparmodus: alles auf Herzschläge umbrechen ================= */
+async function buildSpar(D, stamp8) {
+  const say2 = t => { $("savestatus").textContent = t; };
+  const { L, BT, AC, EC, SY, AT, TP, FT, FA, GY, offs, nacht } = D;
+  say2("Rechne: Zeitreihen …"); await wait(20);
+  const A = AC.length ? expand(AC, offs, "a", 3) : null;
+  const E = EC.length ? expand(EC, offs, "e", 1) : null;
+  const F = FT.length ? expand(FT, offs, "f", 3, p => p.r === 52 ? 4.096 : 1) : null;
+  const G = GY.length ? expand(GY, offs, "f", 3, p => p.f || 1) : null;
+  say2("Rechne: Klopfabgleich …"); await wait(20);
+  /* Abgleich mit allen Sense-Daten, egal ob am Fuß oder am Arm getragen: es ist dieselbe Uhr */
+  const SA = FA && FA.length ? expand(FA, offs, "f", 3, p => p.r === 52 ? 4.096 : 1) : F;
+  const hints = L.filter(r => r.typ === "Abgleich" && /erkannt/.test(r.name)).map(r => r.start);
+  const sync = A && SA ? tapSync(A, SA, hints) : { gc: [], gf: [], pairs: [], fn: () => 0, drift: null };
+  if (sync.pairs.length) { if (F) for (let i = 0; i < F.t.length; i++) F.t[i] += sync.fn(F.t[i]); if (G) for (let i = 0; i < G.t.length; i++) G.t[i] += sync.fn(G.t[i]); }
+  say2("Rechne: Herzschläge und EKG …"); await wait(20);
+  const B = BT.map(b => ({ t: b[0], rr: b[1] })).sort((a, b) => a.t - b.t).filter((b, i, a) => !i || b.t - a[i - 1].t > 200);
+  const R = E ? rPeaks(E) : [];
+  const al = alignBeats(B, R);
+  B.forEach((b, i) => { b.tt = al.out[i].t; b.ok = al.out[i].ok; });
+  for (let i = 0; i < B.length; i++) { const p = B[i - 1], b = B[i]; b.rre = p && p.ok && b.ok && b.tt - p.tt < 2500 ? Math.round(b.tt - p.tt) : null; }
+  const T0 = Math.min(...[B[0]?.tt, A?.t[0], F?.t[0], L.length ? Math.min(...L.map(r => r.start)) : undefined].filter(Number.isFinite));
+  say2("Rechne: Schritte …"); await wait(20);
+  const steps = stepsDetect(F, G, A);
+  say2("Rechne: Atemzüge …"); await wait(20);
+  const bc = breathsChest(A);
+  const goodB = B.filter(b => b.rr > 300 && b.rr < 2000);
+  const bp = breathsPulse(Float64Array.from(goodB, b => b.tt), Float32Array.from(goodB, b => 60000 / b.rr));
+  /* Gegenprobe im Sitzen und Stehen: ein Atemzug aus der Brust gilt nur als sicher, wenn er zur Atemwelle im Puls in der Umgebung passt. Im Liegen ist die Brust verlässlicher. */
+  bc.list.forEach(c => { if (!c.sicher || !c.aufrecht) return; const near = bp.filter(p => Math.abs(p.t - c.t) < 60000 && p.tiefe >= 6).map(p => p.dauer).sort((a, b) => a - b);
+    if (near.length >= 3) { const md = near[near.length >> 1]; if (Math.abs(c.dauer - md) > 0.4 * md) c.sicher = false; } });
+  const sure = bc.list.filter(c => c.sicher);
+  const breaths = [...bc.list.filter(c => c.sicher), ...bp.filter(p => !sure.some(c => p.t < c.tEnd && p.tEnd > c.t))].sort((a, b) => a.t - b.t);
+  say2("Rechne: Zeilen je Herzschlag …"); await wait(20);
+  const fhp = F ? magHP(F, W(F, 0.4)) : null, chp = A ? magHP(A, W(A, 0.5)) : null;
+  const zthr = fhp ? Math.max(40, 8 * medianSub(fhp)) : Infinity;
+  const gmag = G ? magOf(G) : null;
+  const ev = [...L].sort((a, b) => a.start - b.start), pieces = ev.filter(r => r.typ === "Stück");
+  const TPs = [...TP].sort((a, b) => a.t - b.t), ATs = [...AT].sort((a, b) => a.t - b.t);
+  const stepT = Float64Array.from(steps, s => s.t), sureT = Float64Array.from(steps.filter(s => s.sicher), s => s.t), brT = Float64Array.from(breaths, s => s.t);
+  const tx = ms => stamp(new Date(ms));
+  const H = ["Nr", "Uhrzeit", "t_s", "RR_ms", "Puls", "EKG_bestaetigt", "RR_EKG_ms", "Brust_x_mg", "Brust_y_mg", "Brust_z_mg", "Brust_Bewegung_mg", "Atemwert_mg", "Atemphase", "Fuss_x_mg", "Fuss_y_mg", "Fuss_z_mg", "Fuss_Bewegung_mg", "Fuss_Spitze_mg", "Fuss_Drehrate_max_dps", "Zuckung", "Schritt_Nr", "Schritt_Seite", "Temperatur_C", "Luftfeuchte_Prozent", "Stueck", "Block", "Position", "Abspielposition_s", "Atemhilfe_Phase", "Lautstaerke_dB", "Taetigkeit", "Testabschnitt", "Marker", "Notiz", "Epoch_ms"];
+  const rows = [H];
+  let ei = 0, act = "", test = "", vol = null, ti = 0, ai = 0;
+  const win = (X, t0, t1) => { if (!X) return null; const a = lowerBound(X.t, t0), b = lowerBound(X.t, t1); return b > a ? [a, b] : null; };
+  for (let i = 0; i < B.length; i++) {
+    const b = B[i], t = b.tt, t1 = B[i + 1] && B[i + 1].tt - t < 2500 ? B[i + 1].tt : t + b.rr;
+    let mk = [], nt = [];
+    while (ei < ev.length && ev[ei].start < t1) {
+      const r = ev[ei++];
+      if (r.typ === "Tätigkeit") act = r.name;
+      else if (r.typ === "Testabschnitt") test = r.name;
+      else if (r.typ === "Lautstärke") vol = parseFloat(r.name);
+      else if (r.typ === "Einschlafen" && !/^Beginn/.test(r.name)) vol = null;
+      if (r.start >= t) { if (r.typ === "Marker") mk.push(r.name); if (r.typ === "Notiz" || r.typ === "Ansage" || r.typ === "Musik" || r.typ === "Abgleich") nt.push(r.typ + ": " + r.name); }
+    }
+    let cx = null, cy = null, cz = null, cmv = null, aw = null, fx = null, fy = null, fz = null, fmv = null, fpk = null, gpk = null, zuck = null;
+    const wa = win(A, t, t1);
+    if (wa) { let sx = 0, sy = 0, sz = 0, sm = 0, sq = 0; const n = wa[1] - wa[0]; for (let k = wa[0]; k < wa[1]; k++) { sx += A.c[0][k]; sy += A.c[1][k]; sz += A.c[2][k]; sm += chp[k]; } cx = sx / n; cy = sy / n; cz = sz / n; cmv = sm / n; }
+    if (bc.bt.length) { const k = lowerBound(bc.bt, t); if (k < bc.bt.length && Math.abs(bc.bt[k] - t) < 200) aw = bc.bs[k]; }
+    const wf = win(F, t, t1);
+    if (wf) { let sx = 0, sy = 0, sz = 0, sm = 0, mx = 0; const n = wf[1] - wf[0]; for (let k = wf[0]; k < wf[1]; k++) { sx += F.c[0][k]; sy += F.c[1][k]; sz += F.c[2][k]; sm += fhp[k]; if (fhp[k] > mx) mx = fhp[k]; } fx = sx / n; fy = sy / n; fz = sz / n; fmv = sm / n; fpk = mx;
+      if (mx > zthr) { const k = lowerBound(sureT, t - 3000); zuck = !(k < sureT.length && sureT[k] < t1 + 3000) ? "ja" : null; } }
+    const wg = win(G, t, t1);
+    if (wg) { let mx = 0; for (let k = wg[0]; k < wg[1]; k++) if (gmag[k] > mx) mx = gmag[k]; gpk = mx; }
+    let sn = null, ss = null; { const k = lowerBound(stepT, t1) - 1; if (k >= 0 && t - stepT[k] < 2500) { sn = k + 1; ss = steps[k].side; } }
+    let ph = null; { const k = lowerBound(brT, t + 1) - 1; if (k >= 0) { const c = breaths[k]; if (t < c.tE) ph = "Ein"; else if (t < c.tEnd) ph = "Aus"; } }
+    while (ti + 1 < TPs.length && TPs[ti + 1].t <= t) ti++;
+    const tp = TPs[ti] && TPs[ti].t <= t && t - TPs[ti].t < 900000 ? TPs[ti] : null;
+    while (ai + 1 < ATs.length && ATs[ai + 1].t <= t) ai++;
+    const at = ATs[ai] && ATs[ai].t <= t && t < ATs[ai].t + ATs[ai].d ? ATs[ai].p : null;
+    const pc = pieces.find(p => p.start <= t && t < p.end);
+    rows.push([i + 1, tx(t), (t - T0) / 1000, b.rr, Math.round(600000 / b.rr) / 10, b.ok ? "ja" : (R.length ? "nein" : null), b.rre,
+      cx, cy, cz, cmv, aw, ph, fx, fy, fz, fmv, fpk, gpk, zuck, sn, ss, tp ? tp.c : null, tp ? tp.h : null,
+      pc ? pc.name : null, pc ? pc.block : null, pc ? pc.pos : null, pc ? (t - pc.start) / 1000 : null, at, vol,
+      act || null, test || null, mk.join(" | ") || null, nt.join(" | ") || null, Math.round(t)]);
+  }
+  const SR = [["Nr", "Uhrzeit", "t_s", "Seite", "Dauer_bis_naechster_s", "Doppelschritt_s", "Fuss_Spitze_mg", "Aufprall_x_mg", "Aufprall_y_mg", "Aufprall_z_mg", "Drehrate_Spitze_dps", "Schwungdauer_s", "Brust_Stoss_mg", "sicher", "Epoch_ms"]];
+  steps.forEach((s, i) => SR.push([i + 1, tx(s.t), (s.t - T0) / 1000, s.sicher ? s.side : null, s.dauer, s.doppel, s.spitze, s.vec ? s.vec[0] : null, s.vec ? s.vec[1] : null, s.vec ? s.vec[2] : null, s.gyro, s.swing, s.brust, s.sicher ? "ja" : null, Math.round(s.t)]));
+  const AR = [["Nr", "Uhrzeit_Beginn", "t_s", "Einatmen_s", "Ausatmen_s", "Dauer_s", "Atemzuege_pro_min", "Tiefe", "Einheit", "Quelle", "sicher", "Epoch_ms"]];
+  breaths.forEach((c, i) => AR.push([i + 1, tx(c.t), (c.t - T0) / 1000, c.ein, c.aus, c.dauer, Math.round(600 / c.dauer) / 10, c.tiefe, c.quelle === "Brust" ? "mg" : "Schläge/min", c.quelle, c.sicher ? "ja" : null, Math.round(c.t)]));
+  const PR = [["Sitzung", "Typ", "Block", "Position", "Bezeichnung", "Uhrzeit_Start", "t_s", "Uhrzeit_Ende", "Dauer_s", "Epoch_ms"]];
+  ev.forEach(r => PR.push([r.session || null, r.typ, r.block ?? null, r.pos ?? null, r.name, tx(r.start), (r.start - T0) / 1000, r.end ? tx(r.end) : null, r.end ? (r.end - r.start) / 1000 : null, Math.round(r.start)]));
+  let nZ = 0, lastZ = -1e15; rows.slice(1).forEach(r => { if (r[19] === "ja") { if (r[34] - lastZ >= 8000) nZ++; lastZ = r[34]; } });
+  const nR = steps.filter(s => s.side === "R" && s.sicher).length, nL = steps.filter(s => s.side === "L" && s.sicher).length;
+  const gyInfo = GY.length ? `${GY.length} Pakete, Format ${GY[0].ft}, Faktor ${GY[0].fo ?? "keiner"}` : "keine";
+  const KR = [["Feld", "Wert"], ["Version", "Messplayer 8"], ["Datei", stamp8], ["Beginn", dstamp(new Date(T0)) + " " + tx(T0)], ["T0_Epoch_ms", Math.round(T0)],
+    ["BigData", $("bigdata").checked ? "an" : "aus"], ["Herzschläge", B.length], ["davon im EKG bestätigt", R.length ? al.ok : "kein EKG"],
+    ["Versatz Herzschlag-Zeit zu EKG ms", al.lag], ["Klopfgruppen Brust", sync.gc.length], ["Klopfgruppen Sense", sync.gf.length],
+    ["Abgleich Sense zu Brust ms", sync.pairs.length ? sync.pairs.map(p => `${tx(p.t)}: ${Math.round(p.off)} (${p.n === "live" ? "Stelle aus der Live-Erkennung" : p.n + " Klopfer"}, Ähnlichkeit ${Math.round(p.r * 100) / 100})`).join(" | ") : "kein Abgleich gefunden"],
+    ["Drift ms pro Stunde", sync.drift === null ? null : Math.round(sync.drift)], ["Sense-Zeiten korrigiert", sync.pairs.length ? "ja" : "nein"],
+    ["Drehrate Fuß", gyInfo], ["Schritte rechts sicher", nR], ["Schritte links sicher", nL],
+    ["Atemzüge Brust sicher", sure.length], ["Atemzüge aus Puls (Schätzung)", breaths.length - sure.length],
+    ["Schwelle Zuckung mg", Number.isFinite(zthr) ? Math.round(zthr) : null], ["Zuckungen (Ereignisse, mindestens 8 s Abstand)", nZ],
+    ["Hinweis", "Leere Zelle heißt: nicht sicher erkannt. Zeiten der Herzschläge liegen auf der R-Zacke, wenn EKG bestätigt. Einatmen ist der steigende Teil."]];
+  let NE = null;
+  if (nacht) {
+    say2("Rechne: Ereignisse der Nacht …"); await wait(20);
+    NE = nightEvents(F, A, G, B, R, steps, fhp, zthr, T0);
+    const r1 = x => x === null || x === undefined ? null : Math.round(x * 10) / 10;
+    var ER = [["Nr", "Art", "Uhrzeit_Beginn", "t_s", "Uhrzeit_Spitze", "Fuss_Spitze_mg", "Brust_Spitze_mg", "Drehrate_Spitze_dps", "Beginn_nach_letzter_R_ms", "Beginn_vor_naechster_R_ms", "Puls_vorher", "Puls_Spitze", "Spitze_bei_Schlag", "Ausschlag", "Puls_Tief", "Tief_bei_Schlag", "Unterschwingen", "Fenster_Nr", "Epoch_ms"]];
+    NE.ev.forEach(e => ER.push([e.nr, e.art, tx(e.t), (e.t - T0) / 1000, tx(e.tPk), r1(e.fuss), r1(e.brust), r1(e.dreh), r1(e.vorR), r1(e.nachR), r1(e.base), r1(e.pv), e.pk ?? null, e.base ? r1(e.pv - e.base) : null, r1(e.tv), e.tk ?? null, e.base ? r1(e.tv - e.base) : null, e.fenster ?? null, Math.round(e.t)]));
+    KR.splice(KR.length - 1, 0, ["Nachtmodus", "an"], ["Ereignisse Zuckung", NE.ev.filter(e => e.art === "Zuckung").length], ["Ereignisse Brust", NE.ev.filter(e => e.art === "Brust").length], ["Fenster (mit Vergleich)", NE.win.length], ["Fenster Dauer gesamt min", Math.round(NE.win.reduce((a, w) => a + (w.b - w.a), 0) / 60000)], ["Rate Fuß Hz", F ? Math.round(rateOf(F)) : null], ["Rate Brust Hz", A ? Math.round(rateOf(A)) : null]);
+  }
+  say2("Schreibe Excel …"); await wait(20);
+  const sheets = [{ name: "Herzschläge", rows }, { name: "Schritte", rows: SR }, { name: "Atemzüge", rows: AR }];
+  if (NE) sheets.push({ name: "Ereignisse", rows: ER });
+  sheets.push({ name: "Protokoll", rows: PR }, { name: "Kopf", rows: KR });
+  const xlsx = await makeXlsx(sheets);
+  /* JSON: Kopf, Abgleich und die Fenster in voller Auflösung um jedes Klopfen */
+  const fen = [];
+  const cut = (X, a, b, ch) => { if (!X) return []; const o = []; for (let k = lowerBound(X.t, a), e = lowerBound(X.t, b); k < e; k++) { const r = [Math.round((X.t[k] - T0) * 10) / 10]; for (let c = 0; c < ch; c++) r.push(Math.round(X.c[c][k] * 10) / 10); o.push(r); } return o; };
+  [...sync.gc.map(g => ["Klopfen Brust", g]), ...sync.gf.map(g => ["Klopfen Sense", g])].forEach(([art, g]) => {
+    const a = g[0] - 2000, b = g[g.length - 1] + 2000;
+    const a2 = a, b2 = g[g.length - 1] + 2000;
+    fen.push({ art, start_ms: Math.round(a2 - T0), ende_ms: Math.round(b2 - T0), spitzen_ms: g.map(x => Math.round((x - T0) * 10) / 10), brust: cut(A, a2, b2, 3), fuss: cut(F, a2, b2, 3), drehrate: cut(G, a2, b2, 3), ekg: cut(E, a2, b2, 1) });
+  });
+  const json = JSON.stringify({ version: "Messplayer 8", t0_epoch_ms: Math.round(T0), beginn: dstamp(new Date(T0)) + " " + tx(T0), zeit: "Millisekunden seit t0, Fuß und Drehrate auf Brustuhr korrigiert",
+    einheiten: { brust: "mg", fuss: "mg", drehrate: "Grad pro Sekunde", ekg: "Mikrovolt" },
+    abgleich: { methode: "Korrelation der Klopfspuren, Fuß plus Versatz = Brust", paare: sync.pairs.map(p => ({ t_ms: Math.round(p.t - T0), versatz_ms: p.off, aehnlichkeit: Math.round(p.r * 100) / 100, klopfer: p.n })), drift_ms_pro_h: sync.drift },
+    herzschlag_ekg_versatz_ms: al.lag, fenster: fen, nacht: NE ? nightJson(NE, A, F, G, E, R, T0) : null });
+  return { xlsx, json, info: `${B.length} Herzschläge, ${nR + nL} Schritte, ${breaths.length} Atemzüge, ${sync.pairs.length} Abgleich` + (NE ? `, ${NE.ev.length} Ereignisse, ${NE.win.length} Fenster` : "") };
+}
+
 /* ================= Export als ZIP ================= */
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
@@ -1321,14 +2263,14 @@ function tcols(ms) { const d = new Date(ms); return [dstamp(d), stamp(d), Math.r
 async function buildZip() {
   $("savestatus").textContent = "Stelle Daten zusammen …";
   await flush();
-  const [L, BT, SN, EV, AC, EC, SY, AT, TP, FT] = await Promise.all(["log", "beat", "snd", "evt", "acc", "ecg", "sync", "atem", "temp", "foot"].map(readKind));
-  const files = [];
+  const [L, BT, SN, EV, AC, EC, SY, AT, TP, FT0, PP, VH, GY] = await Promise.all(["log", "beat", "snd", "evt", "acc", "ecg", "sync", "atem", "temp", "foot", "ppg", "vhr", "gyro"].map(readKind));
+  const files = [], big = $("bigdata").checked;
   // Messdaten.csv im bisherigen Format (Protokoll plus Herzschläge), damit die alten Auswertungen weiter passen
   const m = ["Sitzung;Typ;Block;Position;Bezeichnung;Datum;Start;Ende;Dauer_s;RR_ms;Ankunft"];
   L.forEach(r => { const st = new Date(r.start), e = r.end ? new Date(r.end) : null;
     m.push([r.session ?? "", r.typ, r.block ?? "", r.pos ?? "", r.name, dstamp(st), stamp(st), e ? stamp(e) : "", e ? num((e - st) / 1000) : "", "", ""].join(";")); });
   BT.forEach(b => { const st = new Date(b[0]); m.push([b[2] ?? "", "Herzschlag", "", "", "", dstamp(st), stamp(st), "", "", b[1], b[3] ? stamp(new Date(b[3])) : ""].join(";")); });
-  files.push({ name: "Messdaten.csv", text: m.join("\n") });
+  if (big) files.push({ name: "Messdaten.csv", text: m.join("\n") });
   if (SN.length) {
     const s = ["Sitzung;Quelle;Datum;Zeit;Epoch_ms;Pegel_dBFS;Spitze_dBFS;Hintergrund_dBFS;Bass_dB;Mitte_dB;Hoehe_dB;Schwerpunkt_Hz;Flachheit;Einsaetze;Tempo_bpm;Tempo_Deutlichkeit;Tonart;Tonart_Deutlichkeit;Art_grob;Kopfhoerer"];
     SN.forEach(r => s.push([r.s ?? "", r.src, ...tcols(r.t), num(r.lev), num(r.max), num(r.bg), num(r.B), num(r.M), num(r.H), Math.round(r.cen), num(r.flat, 3), r.on, num(r.bpm), num(r.tstr, 2), r.key, num(r.kstr, 2), r.cls, r.ph ? "auf" : "ab"].join(";")));
@@ -1341,52 +2283,85 @@ async function buildZip() {
   }
   // Sensorzeit -> Uhrzeit: kleinste Verzögerung je Sitzung (live empfangene Pakete)
   const offs = {};
-  [["a", AC], ["e", EC], ["f", FT]].forEach(([kind, arr]) => arr.forEach(c => { const o = c.t - c.us / 1000; const k = kind + (c.s ?? ""); if (offs[k] === undefined || o < offs[k]) offs[k] = o; }));
+  [["a", AC], ["e", EC], ["f", FT0.concat(PP, GY)]].forEach(([kind, arr]) => arr.forEach(c => { const o = c.t - c.us / 1000; const k = kind + (c.s ?? ""); if (offs[k] === undefined || o < offs[k]) offs[k] = o; }));
   /* Tatsächlicher Abstand der Werte aus den Zeitstempeln aufeinanderfolgender Pakete statt der Nennrate */
   const realDt = (arr, i, n, nominal) => {
+    const md = sessDt(arr, arr === EC ? 1 : arr === PP ? 4 : 3)[arr[i].s]; if (md && (md < nominal * 0.75 || md > nominal * 1.25)) nominal = md;
     const p = i > 0 ? arr[i - 1] : null; if (!p || p.s !== arr[i].s || n <= 0) return nominal;
     const d = (arr[i].us - p.us) / 1000 / n;
     return d > nominal * 0.75 && d < nominal * 1.25 ? d : nominal;
   };
-  if (AC.length) {
+  if (big && AC.length) {
     const s = ["Sitzung;Datum;Zeit;Epoch_ms;Sensor_us;x_mg;y_mg;z_mg"];
     AC.forEach((c, idx) => { const n = c.v.length / 3, dt = realDt(AC, idx, n, 1000 / c.r);
       const base = c.us / 1000 + offs["a" + (c.s ?? "")];
       for (let i = 0; i < n; i++) { const off = (n - 1 - i) * dt; s.push([c.s ?? "", ...tcols(base - off), Math.round(c.us - off * 1000), c.v[3 * i], c.v[3 * i + 1], c.v[3 * i + 2]].join(";")); } });
     files.push({ name: "Beschleunigung.csv", text: s.join("\n") });
   }
-  if (EC.length) {
+  if (big && EC.length) {
     const s = ["Sitzung;Epoch_ms;Sensor_us;EKG_uV"];
     EC.forEach((c, idx) => { const n = c.v.length, dt = realDt(EC, idx, n, 1000 / c.r);
       const base = c.us / 1000 + offs["e" + (c.s ?? "")];
       for (let i = 0; i < n; i++) { const off = (n - 1 - i) * dt; s.push([c.s ?? "", Math.round(base - off), Math.round(c.us - off * 1000), c.v[i]].join(";")); } });
     files.push({ name: "EKG.csv", text: s.join("\n") });
   }
-  if (FT.length) {
+  for (const [place, fname] of [["Fuß", "Fuss_Beschleunigung.csv"], ["Arm", "Arm_Beschleunigung.csv"]]) {
+    const FT = FT0.filter(c => (c.w || "Fuß") === place); if (!FT.length || !big) continue;
     const s = ["Sitzung;Datum;Zeit;Epoch_ms;Sensor_us;x_mg;y_mg;z_mg"];
     FT.forEach((c, idx) => { const n = c.v.length / 3, dt = realDt(FT, idx, n, 1000 / c.r);
       const base = c.us / 1000 + offs["f" + (c.s ?? "")];
-      for (let i = 0; i < n; i++) { const off = (n - 1 - i) * dt; s.push([c.s ?? "", ...tcols(base - off), Math.round(c.us - off * 1000), c.v[3 * i], c.v[3 * i + 1], c.v[3 * i + 2]].join(";")); } });
-    files.push({ name: "Fuss_Beschleunigung.csv", text: s.join("\n") });
+      const sc = c.r === 52 ? 4.096 : 1; /* Altdaten bis Version 6 waren zu klein */
+      for (let i = 0; i < n; i++) { const off = (n - 1 - i) * dt; s.push([c.s ?? "", ...tcols(base - off), Math.round(c.us - off * 1000), Math.round(c.v[3 * i] * sc), Math.round(c.v[3 * i + 1] * sc), Math.round(c.v[3 * i + 2] * sc)].join(";")); } });
+    files.push({ name: fname, text: s.join("\n") });
   }
-  if (SY.length) {
+  if (big && PP.length) {
+    const s = ["Sitzung;Datum;Zeit;Epoch_ms;Sensor_us;ppg0;ppg1;ppg2;umgebung"];
+    PP.forEach((c, idx) => { const n = c.v.length / 4, dt = realDt(PP, idx, n, 1000 / c.r);
+      const base = c.us / 1000 + offs["f" + (c.s ?? "")];
+      for (let i = 0; i < n; i++) { const off = (n - 1 - i) * dt; s.push([c.s ?? "", ...tcols(base - off), Math.round(c.us - off * 1000), c.v[4 * i], c.v[4 * i + 1], c.v[4 * i + 2], c.v[4 * i + 3]].join(";")); } });
+    files.push({ name: "Arm_PPG.csv", text: s.join("\n") });
+  }
+  if (big && VH.length) {
+    const s = ["Sitzung;Datum;Zeit;Epoch_ms;Puls"];
+    VH.forEach(r => s.push([r.s ?? "", ...tcols(r.t), r.b].join(";")));
+    files.push({ name: "Sense_Puls.csv", text: s.join("\n") });
+  }
+  if (big && SY.length) {
     const s = ["Sitzung;Block;Position;Durchgang;Stueck;Datum;Zeit;Epoch_ms;Abspielposition_s;Verzoegerung_ms"];
     SY.forEach(r => s.push([r.s ?? "", r.b ?? "", r.p ?? "", r.r ?? "", r.n, ...tcols(r.t), num(r.c, 3), r.d].join(";")));
     files.push({ name: "Musikposition.csv", text: s.join("\n") });
   }
-  if (AT.length) {
+  if (big && AT.length) {
     const s = ["Sitzung;Phase;Datum;Zeit;Epoch_ms;Dauer_s;Optik;Toene"];
     AT.forEach(r => s.push([r.s ?? "", r.p, ...tcols(r.t), num(r.d / 1000), r.o ? "an" : "aus", r.n ? "an" : "aus"].join(";")));
     files.push({ name: "Atemhilfe.csv", text: s.join("\n") });
   }
-  if (TP.length) {
+  if (big && TP.length) {
     const byMin = new Map(); TP.forEach(r => byMin.set(r.t, r));
     const s = ["Datum;Zeit;Epoch_ms;Temperatur_C;Luftfeuchte_Prozent"];
     [...byMin.values()].sort((a, b) => a.t - b.t).forEach(r => s.push([...tcols(r.t), num(r.c), r.h].join(";")));
     files.push({ name: "Temperatur.csv", text: s.join("\n") });
   }
-  const blob = makeZip(files);
-  return { blob, name: "Messdaten6_" + idstamp(new Date()) + ".zip", list: files.map(f => f.name).join(", ") };
+  if (big && GY.length) {
+    const s = ["Sitzung;Datum;Zeit;Epoch_ms;Sensor_us;x_dps;y_dps;z_dps"];
+    GY.forEach((c, idx) => { const n = c.v.length / 3, dt = realDt(GY, idx, n, 1000 / c.r), f = c.f || 1;
+      const base = c.us / 1000 + offs["f" + (c.s ?? "")];
+      for (let i = 0; i < n; i++) { const off = (n - 1 - i) * dt; s.push([c.s ?? "", ...tcols(base - off), Math.round(c.us - off * 1000), num(c.v[3 * i] * f), num(c.v[3 * i + 1] * f), num(c.v[3 * i + 2] * f)].join(";")); } });
+    files.push({ name: "Fuss_Drehrate.csv", text: s.join("\n") });
+  }
+  const id = idstamp(new Date()), enc = new TextEncoder();
+  const out = files.map(f => ({ name: f.name, data: enc.encode("\uFEFF" + f.text) }));
+  try {
+    const sp = await buildSpar({ L, BT, AC, EC, SY, AT, TP, FT: FT0.filter(c => (c.w || "Fuß") === "Fuß"), FA: FT0, GY, offs, nacht: $("nacht").checked }, id);
+    out.unshift({ name: "Messung8_" + id + ".xlsx", data: sp.xlsx }, { name: "Fenster8_" + id + ".json", data: enc.encode(sp.json) });
+    addEntry({ typ: "Daten", name: "Sparmodus: " + sp.info, start: Date.now() });
+  } catch (e) {
+    out.push({ name: "Fehler_Sparmodus.txt", data: enc.encode(String(e && e.stack || e)) });
+    addEntry({ typ: "Fehler", name: "Sparmodus fehlgeschlagen: " + (e.message || e), start: Date.now() });
+  }
+  $("savestatus").textContent = "Packe ZIP …";
+  const blob = await makeZip8(out);
+  return { blob, name: "Messdaten8_" + id + ".zip", list: out.map(f => f.name).join(", ") };
 }
 $("saveall").addEventListener("click", async () => {
   const z = await buildZip(), a = document.createElement("a");
@@ -1433,7 +2408,10 @@ $("clear").addEventListener("click", async () => {
     log = await readKind("log"); log.slice(-300).forEach(row);
     for (const k of Object.keys(counts)) counts[k] = await countKind(k);
   } catch (e) { $("mem").textContent = "Gerätespeicher nicht verfügbar: " + (e.message || e); }
-  memStatus(); showOrder(); renderReview(); listMics();
+  try { for (const [k, id] of [["messplayer_nacht", "nacht"]]) { const v = localStorage.getItem(k); if (v !== null) $(id).checked = v === "1"; $(id).addEventListener("change", () => { try { localStorage.setItem(k, $(id).checked ? "1" : "0"); } catch (e) {} addEntry({ typ: "Daten", name: "Nachtmodus " + ($(id).checked ? "an" : "aus"), start: Date.now() }); }); } const vr = localStorage.getItem("messplayer_vrate"); if (vr) $("vrate").value = vr; $("vrate").addEventListener("change", () => { try { localStorage.setItem("messplayer_vrate", $("vrate").value); } catch (e) {} }); } catch (e) {}
+  try { const bd = localStorage.getItem('messplayer_bigdata'); if (bd !== null) $("bigdata").checked = bd === '1'; } catch (e) {}
+  $("bigdata").addEventListener("change", () => { try { localStorage.setItem('messplayer_bigdata', $("bigdata").checked ? '1' : '0'); } catch (e) {} addEntry({ typ: "Daten", name: "BigData " + ($("bigdata").checked ? "an" : "aus"), start: Date.now() }); });
+  memStatus(); showOrder(); renderReview(); listMics(); crashCheck(); masterShow(); testShow();
 })();
 </script>
 </body>
